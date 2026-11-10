@@ -123,11 +123,21 @@
   .arc .plane { fill: var(--ink); }
 
   /* 登機證 */
+  /* 陰影用 drop-shadow，才會沿著挖空的缺口走 */
   .pass {
-    background: var(--paper);
-    border-radius: 18px;
-    box-shadow: 0 1px 0 var(--line), 0 18px 40px -24px rgba(22, 50, 79, .45);
+    filter: drop-shadow(0 1px 0 var(--line)) drop-shadow(0 14px 18px rgba(22, 50, 79, .14));
+  }
+  .pass-top, .stub { background: var(--paper); }
+  .pass-top {
+    border-radius: 18px 18px 0 0;
     overflow: hidden;
+    padding-bottom: 20px;
+    -webkit-mask:
+      radial-gradient(circle at 0 100%, transparent 14px, #000 14.5px) left / 51% 100% no-repeat,
+      radial-gradient(circle at 100% 100%, transparent 14px, #000 14.5px) right / 51% 100% no-repeat;
+            mask:
+      radial-gradient(circle at 0 100%, transparent 14px, #000 14.5px) left / 51% 100% no-repeat,
+      radial-gradient(circle at 100% 100%, transparent 14px, #000 14.5px) right / 51% 100% no-repeat;
   }
   .pass-head {
     display: flex; justify-content: space-between; align-items: center;
@@ -149,22 +159,22 @@
   .grid .wide { grid-column: span 3; }
   .seat dd { color: var(--coral); }
 
-  /* 撕線 */
-  .tear {
-    position: relative; height: 28px; margin: 12px 0 0;
+  .stub {
+    position: relative;
+    margin-top: -1px;
+    border-radius: 0 0 18px 18px;
+    -webkit-mask:
+      radial-gradient(circle at 0 1px, transparent 14px, #000 14.5px) left / 51% 100% no-repeat,
+      radial-gradient(circle at 100% 1px, transparent 14px, #000 14.5px) right / 51% 100% no-repeat;
+            mask:
+      radial-gradient(circle at 0 1px, transparent 14px, #000 14.5px) left / 51% 100% no-repeat,
+      radial-gradient(circle at 100% 1px, transparent 14px, #000 14.5px) right / 51% 100% no-repeat;
   }
-  .tear::before {
-    content: ""; position: absolute; left: 22px; right: 22px; top: 50%;
+  .stub::before {
+    content: ""; position: absolute; top: 0; left: 24px; right: 24px;
     border-top: 2px dashed var(--line);
   }
-  .tear::after, .tear .notch {
-    content: ""; position: absolute; top: 50%; width: 28px; height: 28px; border-radius: 50%;
-    background: var(--mist); transform: translateY(-50%);
-  }
-  .tear::after { right: -14px; }
-  .tear .notch { left: -14px; }
-
-  .stub { padding: 8px 20px 22px; display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: end; }
+  .stub { padding: 26px 20px 22px; display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: end; }
   .stub-msg { margin: 0; font-size: 16px; line-height: 1.75; }
   .stub-msg .from { display: block; margin-top: 6px; font-size: 14px; color: var(--ink-soft); }
   .barcode { width: 92px; height: 64px; display: block; }
@@ -252,6 +262,7 @@
         </div>
 
         <article class="pass" aria-label="登機證">
+          <div class="pass-top">
           <div class="pass-head">
             <span>登機證</span>
             <strong id="flight-no"></strong>
@@ -271,7 +282,7 @@
               <div><dt>行李</dt><dd class="zh" id="baggage"></dd></div>
             </dl>
           </div>
-          <div class="tear" aria-hidden="true"><span class="notch"></span></div>
+          </div>
           <div class="stub">
             <p class="stub-msg"><span id="message"></span><span class="from" id="from"></span></p>
             <div>
