@@ -97,28 +97,11 @@
     display: flex; justify-content: space-between; align-items: flex-end;
     font-family: var(--display);
     font-weight: 800;
-    font-size: clamp(56px, 19.5vw, 112px);
+    font-size: clamp(56px, 23vw, 128px);   /* 放大讓 TPE 與 PUS 之間的空白變小 */
     line-height: .9;
     letter-spacing: -.03em;
   }
   .route-codes .to { color: var(--coral); }
-  /* TPE 與 PUS 之間的點狀航線＋箭頭 */
-  .route-codes .link {
-    position: relative; flex: 1; min-width: 30px;
-    align-self: center; height: 14px;
-    margin: 0 .14em; translate: 0 .06em;   /* 對齊大寫字母的視覺中線 */
-    color: var(--ink-soft);
-  }
-  .route-codes .link::before {
-    content: ""; position: absolute; left: 0; right: 9px; top: 50%; height: 4px; transform: translateY(-50%);
-    background: radial-gradient(circle, currentColor 1.6px, transparent 1.9px) 0 50% / 9px 4px repeat-x;
-    opacity: .75;
-  }
-  .route-codes .link::after {
-    content: ""; position: absolute; right: 2px; top: 50%; width: 9px; height: 9px;
-    border-top: 2.5px solid currentColor; border-right: 2.5px solid currentColor; border-radius: 1px;
-    transform: translateY(-50%) rotate(45deg);
-  }
   .route-cities {
     display: flex; justify-content: space-between;
     font-size: 15px; color: var(--ink-soft); margin-top: 8px;
@@ -219,7 +202,6 @@
   .arc { animation: enter-fade 2s ease-out both; }
   .route-codes span:first-child { display: inline-block; animation: enter-left 2s cubic-bezier(.16, .84, .3, 1) both; }
   .route-codes .to { display: inline-block; animation: enter-right 2s cubic-bezier(.16, .84, .3, 1) both; }
-  .route-codes .link { animation: enter-draw 1.4s cubic-bezier(.45, 0, .2, 1) 1.2s both; }
   /* 先標題（0.5 秒），再登機證與下方內容（0.8 秒） */
   .brand, .status, .arc, .route-codes span, .route-cities { animation-delay: .5s; }
   .pass, .companion, .notes, footer { animation-delay: .8s; }
@@ -227,7 +209,6 @@
   @keyframes enter-fade  { from { opacity: 0; } to { opacity: 1; } }
   @keyframes enter-left  { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
   @keyframes enter-right { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
-  @keyframes enter-draw  { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 
   @media (prefers-reduced-motion: reduce) {
     .brand, .status, .arc, .route-codes span, .route-cities, .pass, .companion, .notes, footer { animation: none; }
@@ -331,7 +312,7 @@
               <path d="M14 0 L-1 -2.2 L-6 -9 L-8.5 -9 L-6 -2 L-10 -1.6 L-12.5 -4.5 L-14 -4.5 L-13 0 L-14 4.5 L-12.5 4.5 L-10 1.6 L-6 2 L-8.5 9 L-6 9 L-1 2.2 Z"/>
             </g>
           </svg>
-          <div class="route-codes"><span>TPE</span><span class="link" aria-hidden="true"></span><span class="to">PUS</span></div>
+          <div class="route-codes"><span>TPE</span><span class="to">PUS</span></div>
           <div class="route-cities"><span>台灣・桃園</span><span>韓國・釜山 金海</span></div>
         </div>
 
