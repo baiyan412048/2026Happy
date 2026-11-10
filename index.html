@@ -212,6 +212,14 @@
   [data-theme="pink"] { --coral: #C93A5C; }
   [data-theme="pink"] .sky { background: linear-gradient(180deg, #CFE1EE 0%, #DFE8F0 50%, #EDE6EE 100%); }
 
+
+  /* WebGL 雲（?theme=...&webgl） */
+  .gl-sky {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    display: block;
+    animation: fadein 1.4s ease-out both;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .cloud-layer { animation: none; }
   }
@@ -511,9 +519,209 @@
     }
   }
 
+
+  /* ===== WebGL 雲：GPU 每一幀即時計算，形狀會隨時間慢慢變化 ===== */
+  const GL_THEMES = {
+    lofi: {
+      sky: ["#AFC9DA", "#C7D9E3", "#DFE7EB"], scale: .4, seeds: [19.89, 13.13, 2.7],
+      hi: [246, 244, 238], mid: [221, 228, 231], lo: [156, 177, 194], warm: [238, 226, 212], alpha: .9
+    },
+    pink: {
+      sky: ["#CFE1EE", "#DFE8F0", "#EDE6EE"], scale: .5, seeds: [20.19, 1.4, 5.2],
+      hi: [255, 242, 246], mid: [246, 182, 204], lo: [214, 120, 158], warm: [253, 210, 196], alpha: 1
+    }
+  };
+
+  const GL_FRAG = `
+  #ifdef GL_FRAGMENT_PRECISION_HIGH
+  precision highp float;
+  #else
+  precision mediump float;
+  #endif
+  uniform vec2 uRes;      // 畫布像素
+  uniform float uScale;   // 畫布像素 / CSS 像素
+  uniform float uTime;
+  uniform vec3 uSeeds, uSky0, uSky1, uSky2, uHi, uMid, uLo, uWarm;
+  uniform float uAlpha;
+
+  // 3D simplex noise（Ashima Arts / Stefan Gustavson，MIT 授權）
+  vec3 mod289(vec3 x) { return x - floor(x * (1. / 289.)) * 289.; }
+  vec4 mod289(vec4 x) { return x - floor(x * (1. / 289.)) * 289.; }
+  vec4 permute(vec4 x) { return mod289(((x * 34.) + 1.) * x); }
+  vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - .85373472095314 * r; }
+  float snoise(vec3 v) {
+    const vec2 C = vec2(1. / 6., 1. / 3.);
+    const vec4 D = vec4(0., .5, 1., 2.);
+    vec3 i = floor(v + dot(v, C.yyy));
+    vec3 x0 = v - i + dot(i, C.xxx);
+    vec3 g = step(x0.yzx, x0.xyz);
+    vec3 l = 1. - g;
+    vec3 i1 = min(g.xyz, l.zxy);
+    vec3 i2 = max(g.xyz, l.zxy);
+    vec3 x1 = x0 - i1 + C.xxx;
+    vec3 x2 = x0 - i2 + C.yyy;
+    vec3 x3 = x0 - D.yyy;
+    i = mod289(i);
+    vec4 p = permute(permute(permute(
+      i.z + vec4(0., i1.z, i2.z, 1.)) + i.y + vec4(0., i1.y, i2.y, 1.)) + i.x + vec4(0., i1.x, i2.x, 1.));
+    float n_ = .142857142857;
+    vec3 ns = n_ * D.wyz - D.xzx;
+    vec4 j = p - 49. * floor(p * ns.z * ns.z);
+    vec4 x_ = floor(j * ns.z);
+    vec4 y_ = floor(j - 7. * x_);
+    vec4 x = x_ * ns.x + ns.yyyy;
+    vec4 y = y_ * ns.x + ns.yyyy;
+    vec4 h = 1. - abs(x) - abs(y);
+    vec4 b0 = vec4(x.xy, y.xy);
+    vec4 b1 = vec4(x.zw, y.zw);
+    vec4 s0 = floor(b0) * 2. + 1.;
+    vec4 s1 = floor(b1) * 2. + 1.;
+    vec4 sh = -step(h, vec4(0.));
+    vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
+    vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
+    vec3 p0 = vec3(a0.xy, h.x);
+    vec3 p1 = vec3(a0.zw, h.y);
+    vec3 p2 = vec3(a1.xy, h.z);
+    vec3 p3 = vec3(a1.zw, h.w);
+    vec4 norm = taylorInvSqrt(vec4(dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3)));
+    p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+    vec4 m = max(.6 - vec4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3)), 0.);
+    m = m * m;
+    return 42. * dot(m * m, vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
+  }
+  float noise(vec3 x) { return snoise(x) * .5 + .5; }
+
+  // 分形雜訊：xy 是位置，z 是時間（讓雲慢慢變形）；細節層變化稍快但有上限，避免翻湧
+  float fbm(vec2 xy, float z, int oct) {
+    float sum = 0., amp = .6, f = 1.;
+    for (int o = 0; o < 6; o++) {
+      if (o >= oct) break;
+      sum += amp * noise(vec3(xy * f, z * (1. + float(o) * .5) + float(o) * 17.3));
+      amp *= .44; f *= 2.;
+    }
+    return sum;
+  }
+
+  // 一層雲：回傳顏色(rgb) 與覆蓋度(a)
+  vec4 layer(vec2 px, float H, float freq, float speed, float bobAmp, float bobPer, float morph,
+             float lo, float hi, float alpha, float seed, vec4 band) {
+    vec2 q = px;
+    q.x += uTime * speed;                                   // 水平飄動
+    q.y += sin(uTime * 6.2832 / bobPer + seed) * bobAmp;    // 上下浮動
+    float z = uTime * morph + seed;                          // 形狀變化
+    float v = clamp(px.y / H, 0., 1.);
+    float b = band.x + band.y * pow(1. - v, band.z) + band.w * pow(v, 2.5);
+    float d = fbm(q * freq, z, 5) * b;
+    float a = smoothstep(lo, hi, d);
+    if (a <= 0.) return vec4(0.);
+    float off = max(2., H * .012);
+    float vA = clamp((px.y - off) / H, 0., 1.);
+    float bA = band.x + band.y * pow(1. - vA, band.z) + band.w * pow(vA, 2.5);
+    float above = fbm((q - vec2(0., off)) * freq, z, 4) * bA;
+    float light = clamp(.58 + (d - above) * 9. + (a - .5) * .35, 0., 1.);
+    vec3 col = light > .5 ? mix(uMid, uHi, (light - .5) * 2.) : mix(uLo, uMid, light * 2.);
+    col = mix(col, uWarm, (1. - v) * .35);
+    return vec4(col, a * alpha * uAlpha);
+  }
+
+  void main() {
+    vec2 px = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) / uScale;  // CSS 像素，y 由上往下
+    float H = uRes.y / uScale;
+    float v = px.y / H;
+    vec3 col = v < .5 ? mix(uSky0, uSky1, v * 2.) : mix(uSky1, uSky2, (v - .5) * 2.);
+    // 遠層：大、慢、淡；中層：主體；近層：薄雲、較快
+    vec4 L;
+    L = layer(px, H, 1. / 380., 5., 8., 24., .018, .50, .66, .80, uSeeds.x, vec4(.88, .22, 1.5, .12));
+    col = mix(col, L.rgb, L.a);
+    L = layer(px, H, 1. / 260., 7., 8., 20., .024, .53, .65, 1.0, uSeeds.y, vec4(.82, .30, 2.2, .22));
+    col = mix(col, L.rgb, L.a);
+    L = layer(px, H, 1. / 180., 10., 6., 16., .03, .60, .72, .55, uSeeds.z, vec4(.92, .10, 1.0, .06));
+    col = mix(col, L.rgb, L.a);
+    gl_FragColor = vec4(col, 1.);
+  }`;
+
+  function hexRGB(h) { return [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255); }
+
+  function buildWebGLClouds(sky, name) {
+    const T = GL_THEMES[name];
+    const canvas = document.createElement("canvas");
+    canvas.className = "gl-sky";
+    const gl = canvas.getContext("webgl", { antialias: false, alpha: false, powerPreference: "low-power" });
+    if (!gl) return false;
+
+    const sh = (type, src) => {
+      const o = gl.createShader(type); gl.shaderSource(o, src); gl.compileShader(o);
+      if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) { console.warn(gl.getShaderInfoLog(o)); return null; }
+      return o;
+    };
+    const vs = sh(gl.VERTEX_SHADER, "attribute vec2 p; void main(){ gl_Position = vec4(p, 0., 1.); }");
+    const fs = sh(gl.FRAGMENT_SHADER, GL_FRAG);
+    if (!vs || !fs) return false;
+    const prog = gl.createProgram();
+    gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return false;
+    gl.useProgram(prog);
+
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(prog, "p");
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+    const U = (n) => gl.getUniformLocation(prog, n);
+    const c255 = (a) => a.map((x) => x / 255);
+    gl.uniform3fv(U("uSeeds"), T.seeds);
+    gl.uniform3fv(U("uSky0"), hexRGB(T.sky[0]));
+    gl.uniform3fv(U("uSky1"), hexRGB(T.sky[1]));
+    gl.uniform3fv(U("uSky2"), hexRGB(T.sky[2]));
+    gl.uniform3fv(U("uHi"), c255(T.hi));
+    gl.uniform3fv(U("uMid"), c255(T.mid));
+    gl.uniform3fv(U("uLo"), c255(T.lo));
+    gl.uniform3fv(U("uWarm"), c255(T.warm));
+    gl.uniform1f(U("uAlpha"), T.alpha);
+    const uRes = U("uRes"), uScale = U("uScale"), uTime = U("uTime");
+
+    // 以較低解析度計算再放大：雲本來就柔和，手機也省電
+    function resize() {
+      canvas.width = Math.max(1, Math.round(innerWidth * T.scale));
+      canvas.height = Math.max(1, Math.round(innerHeight * T.scale));
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.uniform2f(uRes, canvas.width, canvas.height);
+      gl.uniform1f(uScale, T.scale);
+    }
+    resize();
+    addEventListener("resize", () => { resize(); if (reduceMotion) draw(0); });
+
+    // 從隨機時間點開始，每次打開的雲都不一樣
+    const t0 = performance.now() - Math.random() * 60000;
+    function draw(now) {
+      gl.uniform1f(uTime, (now - t0) / 1000);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
+    sky.prepend(canvas);
+    if (reduceMotion) { draw(performance.now()); }
+    else {
+      const loop = (now) => { draw(now); requestAnimationFrame(loop); };
+      requestAnimationFrame(loop);
+    }
+    if (name === "lofi") {
+      const g = document.createElement("div");
+      g.className = "grain";
+      g.style.backgroundImage = `url(${noiseTile(160)})`;
+      const vg = document.createElement("div");
+      vg.className = "vignette";
+      sky.append(g, vg);
+    }
+    return true;
+  }
+
   const theme = document.documentElement.dataset.theme;
-  // 雲層運算較重，等飛機降落後再產生並淡入，避免動畫卡頓
-  if (theme) setTimeout(() => buildClouds($("sky"), theme), reduceMotion ? 0 : 1700);
+  const useWebGL = new URLSearchParams(location.search).has("webgl");
+  // 雲層等飛機降落後再產生並淡入，避免動畫卡頓；WebGL 不支援時自動改用一般版本
+  if (theme) setTimeout(() => {
+    if (!(useWebGL && buildWebGLClouds($("sky"), theme))) buildClouds($("sky"), theme);
+  }, reduceMotion ? 0 : 1700);
 
   fill();
   flyPlane();

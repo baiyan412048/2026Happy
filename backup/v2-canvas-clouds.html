@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>快樂航空｜電子機票</title>
+<meta name="color-scheme" content="light">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<script>
+  // 背景主題：網址加 ?theme=lofi 或 ?theme=pink
+  (function () {
+    var t = new URLSearchParams(location.search).get("theme");
+    if (t === "lofi" || t === "pink") document.documentElement.dataset.theme = t;
+  })();
+</script>
+<style>
+  :root {
+    --ink: #16324F;        /* 海港深藍：文字 */
+    --ink-soft: #4E6A85;
+    --mist: #E6EFF3;       /* 霧藍底 */
+    --paper: #FFFFFF;
+    --coral: #E2566E;      /* 甘川珊瑚粉：重點色 */
+    --sun: #F3C04F;        /* 芥末黃 */
+    --teal: #2F9C95;
+    --line: #C9D7E0;
+    --display: "Bricolage Grotesque", "Noto Sans TC", sans-serif;
+    --body: "Noto Sans TC", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--mist);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.65;
+  }
+  a { color: inherit; }
+  :focus-visible { outline: 3px solid var(--coral); outline-offset: 3px; border-radius: 6px; }
+
+  .wrap { width: 100%; max-width: 560px; margin: 0 auto; padding: 0 16px; }
+
+  /* 頂部品牌 */
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    padding: 22px 0;
+    font-weight: 700; letter-spacing: .02em;
+  }
+  .brand svg { width: 34px; height: 34px; flex: none; }
+  .brand small { display: block; font-family: var(--display); font-weight: 600; font-size: 13px; color: var(--ink-soft); letter-spacing: 0; line-height: 1.2; }
+  .brand span { line-height: 1.2; }
+
+  /* 查詢表單 */
+
+  /* 訂位結果 */
+  .booking { padding: 8px 0 56px; }
+  .status {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-weight: 500; font-size: 15px;
+    color: var(--teal);
+    margin-bottom: 4px;
+  }
+  .status svg { width: 18px; height: 18px; }
+
+  /* 航線主視覺：整頁最大膽的地方 */
+  .route { position: relative; margin: 8px 0 28px; }
+  .route-codes {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(64px, 22vw, 112px);
+    line-height: .9;
+    letter-spacing: -.03em;
+  }
+  .route-codes .to { color: var(--coral); }
+  .route-cities {
+    display: flex; justify-content: space-between;
+    font-size: 15px; color: var(--ink-soft); margin-top: 8px;
+  }
+  .route-cities span:last-child { text-align: right; }
+  .arc {
+    display: block; width: 100%; height: auto;
+    margin-bottom: 10px;
+    overflow: visible;
+  }
+  .arc path.track { fill: none; stroke: var(--ink); stroke-width: 2; stroke-dasharray: 2 9; stroke-linecap: round; opacity: .45; }
+  .arc .plane { fill: var(--ink); }
+
+  /* 登機證 */
+  /* 陰影用 drop-shadow，才會沿著挖空的缺口走 */
+  .pass {
+    filter: drop-shadow(0 1px 0 var(--line)) drop-shadow(0 14px 18px rgba(22, 50, 79, .14));
+  }
+  .pass-top, .stub { background: var(--paper); }
+  .pass-top {
+    border-radius: 18px 18px 0 0;
+    overflow: hidden;
+    padding-bottom: 20px;
+    -webkit-mask:
+      radial-gradient(circle at 0 100%, transparent 14px, #000 14.5px) left / 51% 100% no-repeat,
+      radial-gradient(circle at 100% 100%, transparent 14px, #000 14.5px) right / 51% 100% no-repeat;
+            mask:
+      radial-gradient(circle at 0 100%, transparent 14px, #000 14.5px) left / 51% 100% no-repeat,
+      radial-gradient(circle at 100% 100%, transparent 14px, #000 14.5px) right / 51% 100% no-repeat;
+  }
+  .pass-head {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--ink); color: var(--paper);
+    padding: 14px 20px;
+    font-size: 14px;
+  }
+  .pass-head strong { font-family: var(--display); font-size: 18px; font-weight: 600; letter-spacing: .04em; }
+  .pass-body { padding: 20px 20px 8px; }
+  .name { margin: 0 0 18px; }
+  .name dt, .grid dt { font-size: 13px; color: var(--ink-soft); }
+  .name dd { margin: 2px 0 0; font-size: 24px; font-weight: 700; line-height: 1.3; }
+  .grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 16px 12px; margin: 0;
+  }
+  .grid dd { margin: 2px 0 0; font-family: var(--display); font-weight: 600; font-size: 22px; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .grid dd.zh { font-family: var(--body); font-size: 17px; font-weight: 700; line-height: 1.35; }
+  .grid .wide { grid-column: span 3; }
+  .seat dd { color: var(--coral); }
+
+  .stub {
+    position: relative;
+    margin-top: -1px;
+    border-radius: 0 0 18px 18px;
+    -webkit-mask:
+      radial-gradient(circle at 0 1px, transparent 14px, #000 14.5px) left / 51% 100% no-repeat,
+      radial-gradient(circle at 100% 1px, transparent 14px, #000 14.5px) right / 51% 100% no-repeat;
+            mask:
+      radial-gradient(circle at 0 1px, transparent 14px, #000 14.5px) left / 51% 100% no-repeat,
+      radial-gradient(circle at 100% 1px, transparent 14px, #000 14.5px) right / 51% 100% no-repeat;
+  }
+  .stub::before {
+    content: ""; position: absolute; top: 0; left: 24px; right: 24px;
+    border-top: 2px dashed var(--line);
+  }
+  .stub { padding: 26px 20px 22px; display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: end; }
+  .stub-msg { margin: 0; font-size: 16px; line-height: 1.75; }
+  .stub-msg .from { display: block; margin-top: 6px; font-size: 14px; color: var(--ink-soft); }
+  .barcode { width: 100%; min-width: 92px; height: 64px; display: block; }
+  .barcode rect { fill: var(--ink); }
+  .code-text { font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: 0; margin-top: 4px; text-align: justify; text-align-last: justify; white-space: nowrap; }
+
+  /* 同行旅客 */
+  .companion {
+    margin-top: 16px;
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    background: var(--paper);
+    border-radius: 14px;
+    padding: 16px 20px;
+  }
+  .companion .who { font-size: 13px; color: var(--ink-soft); }
+  .companion .who b { display: block; font-size: 18px; color: var(--ink); }
+  .companion .seat-mini { font-family: var(--display); font-weight: 600; font-size: 22px; }
+
+  .notes { margin-top: 28px; font-size: 15px; color: var(--ink-soft); }
+  .notes h2 { font-size: 17px; color: var(--ink); margin: 0 0 8px; }
+  .notes ul { margin: 0; padding-left: 1.2em; }
+  .notes li + li { margin-top: 4px; }
+
+  footer { padding: 24px 0 40px; font-size: 13px; color: var(--ink-soft); text-align: center; }
+
+  /* 揭曉：登機證浮現 */
+  .reveal .pass, .reveal .companion, .reveal .notes { animation: rise .6s cubic-bezier(.2,.7,.2,1) both; }
+  .reveal .pass { animation-delay: 1.5s; }
+  .reveal .companion { animation-delay: 1.7s; }
+  .reveal .notes { animation-delay: 1.9s; }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal .pass, .reveal .companion, .reveal .notes { animation: none; }
+  }
+  @media (max-width: 440px) {
+    .grid { grid-template-columns: repeat(2, 1fr); }
+    .grid .wide { grid-column: span 2; }
+  }
+
+  /* ===== 背景主題：?theme=lofi / ?theme=pink ===== */
+  .sky { display: none; position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+  .wrap { position: relative; z-index: 1; }
+  [data-theme] .sky { display: block; }
+
+  /* 寫實雲層：三層不同速度（遠慢近快）水平飄動，加上輕微上下浮動 */
+  .cloud-layer {
+    position: absolute; top: -12px; left: 0; height: calc(100% + 24px);
+    background-repeat: repeat-x;
+    will-change: transform, translate;
+    backface-visibility: hidden;
+    animation:
+      slide var(--dur) linear infinite,
+      bob var(--bob) ease-in-out infinite alternate,
+      fadein 1.4s ease-out both;
+  }
+  @keyframes slide { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-50%, 0, 0); } }
+  @keyframes bob { from { translate: 0 -8px; } to { translate: 0 8px; } }
+  @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+
+  /* lofi：褪色藍天、低對比白雲、底片顆粒與暗角 */
+  [data-theme="lofi"] .sky { background: linear-gradient(180deg, #AFC9DA 0%, #C7D9E3 45%, #DFE7EB 100%); }
+  .grain { position: absolute; inset: 0; transform: translateZ(0); }
+  .vignette { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(60, 80, 100, .18) 100%); }
+
+  /* pink：粉色寫實雲層 */
+  [data-theme="pink"] { --coral: #C93A5C; }
+  [data-theme="pink"] .sky { background: linear-gradient(180deg, #CFE1EE 0%, #DFE8F0 50%, #EDE6EE 100%); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cloud-layer { animation: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="sky" id="sky" aria-hidden="true"></div>
+  <div class="wrap">
+    <header class="brand">
+      <svg viewBox="0 0 40 40" aria-hidden="true">
+        <circle cx="20" cy="20" r="19" fill="#E2566E"/>
+        <circle cx="20" cy="17" r="7" fill="#F3C04F"/>
+        <path d="M4 25c4-3 8-3 12 0s8 3 12 0 7-3 9-1v4a19 19 0 0 1-33 0z" fill="#16324F"/>
+      </svg>
+      <span>快樂航空<small>Happy Air</small></span>
+    </header>
+
+    <main>
+      <section class="booking reveal" id="booking" aria-labelledby="booking-title">
+        <div class="status">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="currentColor"/><path d="M6 10.5l2.6 2.6L14 7.8" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span id="booking-title">訂位已確認，機票已開立</span>
+        </div>
+
+        <div class="route" aria-label="從桃園國際機場飛往釜山金海國際機場">
+          <svg class="arc" viewBox="0 0 400 70" aria-hidden="true">
+            <path class="track" id="track" d="M40 56 Q200 -14 360 56"/>
+            <g id="plane" class="plane">
+              <path d="M14 0 L-1 -2.2 L-6 -9 L-8.5 -9 L-6 -2 L-10 -1.6 L-12.5 -4.5 L-14 -4.5 L-13 0 L-14 4.5 L-12.5 4.5 L-10 1.6 L-6 2 L-8.5 9 L-6 9 L-1 2.2 Z"/>
+            </g>
+          </svg>
+          <div class="route-codes"><span>TPE</span><span class="to">PUS</span></div>
+          <div class="route-cities"><span>台灣・桃園</span><span>韓國・釜山 金海</span></div>
+        </div>
+
+        <article class="pass" aria-label="登機證">
+          <div class="pass-top">
+          <div class="pass-head">
+            <span>登機證</span>
+            <strong id="flight-no"></strong>
+          </div>
+          <div class="pass-body">
+            <dl class="name">
+              <dt>旅客姓名</dt>
+              <dd id="passenger"></dd>
+            </dl>
+            <dl class="grid">
+              <div class="wide"><dt>出發日期</dt><dd class="zh" id="date"></dd></div>
+              <div><dt>登機時間</dt><dd class="zh" id="boarding"></dd></div>
+              <div><dt>登機門</dt><dd id="gate"></dd></div>
+              <div class="seat"><dt>座位</dt><dd id="seat"></dd></div>
+              <div><dt>艙等</dt><dd class="zh" id="cabin"></dd></div>
+              <div><dt>飛行時間</dt><dd class="zh" id="duration"></dd></div>
+              <div><dt>行李</dt><dd class="zh" id="baggage"></dd></div>
+            </dl>
+          </div>
+          </div>
+          <div class="stub">
+            <p class="stub-msg"><span id="message"></span><span class="from" id="from"></span></p>
+            <div>
+              <svg class="barcode" id="barcode" viewBox="0 0 92 64" preserveAspectRatio="none" aria-hidden="true"></svg>
+              <div class="code-text" id="code-text"></div>
+            </div>
+          </div>
+        </article>
+
+        <div class="companion">
+          <div class="who">同行旅客<b id="companion"></b></div>
+          <div class="seat-mini" id="companion-seat"></div>
+        </div>
+
+        <section class="notes">
+          <h2>旅客須知</h2>
+          <ul id="notes"></ul>
+        </section>
+      </section>
+    </main>
+
+    <footer>© 2026 快樂航空 Happy Air</footer>
+  </div>
+
+<script>
+  /* ===== 在這裡改成你們的資料 ===== */
+  const CONFIG = {
+    code: "HAPPY4EVER",           // 訂位代號（顯示在條碼下方）
+    passenger: "WANG / XIAOMEI", // 旅客姓名
+    companion: "CHEN / DAMING",  // 同行旅客姓名
+    flight: "HA 520",
+    date: "日期待定",
+    boarding: "起飛前 40 分鐘",
+    gate: "A1",
+    seat: "5A",
+    companionSeat: "5B",
+    cabin: "經濟艙",
+    duration: "約 2 小時 15 分",
+    baggage: "托運 23 公斤",
+    message: "感謝您選擇快樂航空，期待與您在釜山相見，祝您旅途愉快。",
+    from: "快樂航空 敬上",
+    notes: [
+      "請於班機起飛前 2 小時抵達機場，辦理報到及行李托運手續。",
+      "請攜帶效期六個月以上之有效護照。",
+      "登機門將於班機起飛前 20 分鐘關閉，請準時登機。"
+    ]
+  };
+  /* =============================== */
+
+  const $ = (id) => document.getElementById(id);
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function fill() {
+    $("flight-no").textContent = CONFIG.flight;
+    $("passenger").textContent = CONFIG.passenger;
+    $("date").textContent = CONFIG.date;
+    $("boarding").textContent = CONFIG.boarding;
+    $("gate").textContent = CONFIG.gate;
+    $("seat").textContent = CONFIG.seat;
+    $("cabin").textContent = CONFIG.cabin;
+    $("duration").textContent = CONFIG.duration;
+    $("baggage").textContent = CONFIG.baggage;
+    $("message").textContent = CONFIG.message;
+    $("from").textContent = CONFIG.from;
+    $("companion").textContent = CONFIG.companion;
+    $("companion-seat").textContent = CONFIG.companionSeat;
+    $("code-text").textContent = CONFIG.code;
+    $("notes").innerHTML = "";
+    CONFIG.notes.forEach((n) => { const li = document.createElement("li"); li.textContent = n; $("notes").appendChild(li); });
+    drawBarcode(CONFIG.code);
+  }
+
+  // 依訂位代號產生裝飾用條碼
+  function drawBarcode(text) {
+    const svg = $("barcode");
+    svg.innerHTML = "";
+    let seed = 0;
+    for (const c of text) seed = (seed * 31 + c.charCodeAt(0)) >>> 0;
+    let x = 0;
+    while (x < 92) {
+      seed = (seed * 1103515245 + 12345) >>> 0;
+      const w = 1 + (seed >>> 16) % 3;
+      const gap = 1 + (seed >>> 20) % 3;
+      if (x + w > 92) break;
+      const r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      r.setAttribute("x", x); r.setAttribute("y", 0);
+      r.setAttribute("width", w); r.setAttribute("height", 64);
+      svg.appendChild(r);
+      x += w + gap;
+    }
+  }
+
+  // 小飛機沿弧線飛行
+  function flyPlane() {
+    const track = $("track"), plane = $("plane");
+    const len = track.getTotalLength();
+    const place = (t) => {
+      const d = len * t;
+      const p = track.getPointAtLength(d);
+      // 取前後兩點算切線角度，起點與終點也能正確轉向
+      const p0 = track.getPointAtLength(Math.max(0, d - 1));
+      const p1 = track.getPointAtLength(Math.min(len, d + 1));
+      const a = Math.atan2(p1.y - p0.y, p1.x - p0.x) * 180 / Math.PI;
+      plane.setAttribute("transform", `translate(${p.x} ${p.y}) rotate(${a})`);
+    };
+    if (reduceMotion) { place(1); return; }
+    const dur = 1600; let start;
+    const step = (ts) => {
+      if (!start) start = ts;
+      const k = Math.min(1, (ts - start) / dur);
+      const e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      place(e);
+      if (k < 1) requestAnimationFrame(step);
+    };
+    place(0);
+    requestAnimationFrame(step);
+  }
+
+
+  /* ===== 背景主題 ===== */
+  // 可重現的亂數
+  function rng(seed) {
+    return function () {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed / 4294967296;
+    };
+  }
+
+  // 底片顆粒
+  function noiseTile(size) {
+    const c = document.createElement("canvas");
+    c.width = c.height = size;
+    const ctx = c.getContext("2d");
+    const img = ctx.createImageData(size, size);
+    for (let i = 0; i < img.data.length; i += 4) {
+      const dark = Math.random() < .5;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = dark ? 40 : 255;
+      img.data[i + 3] = Math.random() * (dark ? 20 : 12);
+    }
+    ctx.putImageData(img, 0, 0);
+    return c.toDataURL();
+  }
+
+  function cloudTexture(w, h, seed, opts) {
+    const r = rng(seed);
+    const P = 256, perm = new Uint8Array(P), val = new Float32Array(P);
+    for (let i = 0; i < P; i++) { perm[i] = i; val[i] = r(); }
+    for (let i = P - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [perm[i], perm[j]] = [perm[j], perm[i]]; }
+    const hash = (x, y) => val[perm[(perm[x & 255] + y) & 255]];
+    const smooth = (t) => t * t * (3 - 2 * t);
+    function noise(x, y, period) {
+      const x0 = Math.floor(x), y0 = Math.floor(y);
+      const fx = smooth(x - x0), fy = smooth(y - y0);
+      const xa = ((x0 % period) + period) % period, xb = (xa + 1) % period;
+      const a = hash(xa, y0), b = hash(xb, y0), c = hash(xa, y0 + 1), d = hash(xb, y0 + 1);
+      return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy;
+    }
+    function fbm(x, y) {
+      let sum = 0, amp = .6, period = opts.cells, f = 1;
+      for (let o = 0; o < 6; o++) {
+        sum += amp * noise(x * f, y * f, period);
+        amp *= .44; f *= 2; period *= 2;
+      }
+      return sum;
+    }
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    const ctx = c.getContext("2d");
+    const img = ctx.createImageData(w, h);
+    const sx = opts.cells / w, sy = opts.cells / w;
+    const { hi, mid, lo, warm } = opts.palette;
+    const shadeOff = Math.max(2, h * .012);
+    for (let y = 0; y < h; y++) {
+      const v = y / h;
+      const band = opts.band(v);
+      for (let x = 0; x < w; x++) {
+        const d = fbm(x * sx, y * sy) * band;
+        let a = (d - opts.lo) / (opts.hi - opts.lo);
+        a = a <= 0 ? 0 : a >= 1 ? 1 : a * a * (3 - 2 * a);
+        const i = (y * w + x) * 4;
+        if (a === 0) { img.data[i + 3] = 0; continue; }
+        // 光從上方來：上方較密的地方，下方就比較暗
+        const above = fbm(x * sx, (y - shadeOff) * sy) * opts.band(Math.max(0, (y - shadeOff) / h));
+        let light = .58 + (d - above) * 9 + (a - .5) * .35;
+        light = light < 0 ? 0 : light > 1 ? 1 : light;
+        let col;
+        if (light > .5) { const t = (light - .5) * 2; col = mid.map((m, k) => m + (hi[k] - m) * t); }
+        else { const t = light * 2; col = lo.map((l, k) => l + (mid[k] - l) * t); }
+        const wt = (1 - v) * .35;
+        col = col.map((cc, k) => cc + (warm[k] - cc) * wt);
+        img.data[i] = col[0]; img.data[i + 1] = col[1]; img.data[i + 2] = col[2];
+        img.data[i + 3] = a * opts.alpha * 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    return c.toDataURL();
+  }
+
+  // 雲的配色
+  const PALETTES = {
+    // lofi：褪色的白、偏灰藍的陰影，帶一點舊照片的暖調
+    lofi: { hi: [246, 244, 238], mid: [221, 228, 231], lo: [156, 177, 194], warm: [238, 226, 212] },
+    // pink：粉色高光與玫瑰色陰影
+    pink: { hi: [255, 242, 246], mid: [246, 182, 204], lo: [214, 120, 158], warm: [253, 210, 196] }
+  };
+
+  // 三層雲：遠層大而慢、中層主體、近層薄雲較快
+  function buildClouds(sky, name) {
+    const H = Math.max(innerHeight, 640) + 24;
+    const W = Math.max(Math.round(innerWidth * 2), 1200); // 一張可無縫循環的寬度
+    const scale = name === "lofi" ? .4 : .5;              // lofi 解析度低一點，更柔
+    const tw = Math.round(W * scale), th = Math.round(H * scale);
+    const palette = PALETTES[name];
+    const layers = [
+      { seed: name === "lofi" ? 1989 : 2019, cells: Math.round(W / 380), lo: .43, hi: .6, alpha: .8, dur: 240, bob: 24,
+        band: (v) => .88 + .22 * Math.pow(1 - v, 1.5) + .12 * Math.pow(v, 2) },
+      { seed: name === "lofi" ? 1313 : 14, cells: Math.round(W / 260), lo: .47, hi: .6, alpha: 1, dur: 170, bob: 20,
+        band: (v) => .82 + .3 * Math.pow(1 - v, 2.2) + .22 * Math.pow(v, 3) },
+      { seed: name === "lofi" ? 27 : 520, cells: Math.round(W / 180), lo: .56, hi: .7, alpha: .55, dur: 120, bob: 16,
+        band: (v) => .9 + .12 * Math.sin(v * Math.PI * 2) }
+    ];
+    if (name === "lofi") layers.forEach((L) => { L.alpha *= .9; });
+    layers.forEach((L) => {
+      const el = document.createElement("div");
+      el.className = "cloud-layer";
+      el.style.backgroundImage = `url(${cloudTexture(tw, th, L.seed, { ...L, palette })})`;
+      el.style.backgroundSize = `${W}px 100%`;
+      el.style.width = `${W * 2}px`;
+      el.style.setProperty("--dur", `${L.dur}s`);
+      el.style.setProperty("--bob", `${L.bob}s`);
+      sky.appendChild(el);
+    });
+    if (name === "lofi") {
+      const g = document.createElement("div");
+      g.className = "grain";
+      g.style.backgroundImage = `url(${noiseTile(160)})`;
+      const v = document.createElement("div");
+      v.className = "vignette";
+      sky.append(g, v);
+    }
+  }
+
+  const theme = document.documentElement.dataset.theme;
+  // 雲層運算較重，等飛機降落後再產生並淡入，避免動畫卡頓
+  if (theme) setTimeout(() => buildClouds($("sky"), theme), reduceMotion ? 0 : 1700);
+
+  fill();
+  flyPlane();
+</script>
+</body>
+</html>
