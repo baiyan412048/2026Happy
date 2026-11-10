@@ -12,6 +12,11 @@ const CFG = {
   trailLife: 11,       // 飛機雲存在多久（秒）
   // 飛機飛出畫面後，等最後一段飛機雲完全消失再多 1 秒才開始下一趟（無限循環）
   wind: -1.6,          // 飛機雲隨風往左飄的速度（世界單位/秒）
+  // 機身塗裝：原本的水藍機身改成 body，深藍尾翼與引擎改成 accent（依主題）
+  livery: {
+    pink: { body: "#F6F3F3", accent: "#D398A9" },   // 白色機身＋柔和玫瑰粉尾翼
+    lofi: { body: "#F3F3F0", accent: "#71889A" },   // 白色機身＋灰藍尾翼
+  },
 };
 
 // 鏡頭在原點看向天空（仰角自動調整，見 aimCamera）。
@@ -19,6 +24,48 @@ const CFG = {
 // 從右緣約 14% 高度出場；飛機會放大約 1.25 倍（以直式手機計算，寬螢幕會自動把航線延長到畫面外）。
 const CAMERA = { fov: 34 };
 const PATH = { a: [-109, 124, -326], b: [87, 141, -255] };
+
+// 重新上色貼圖：依色相找出藍色區塊，換成新顏色並保留原本的明暗與細節
+function repaint(tex, livery) {
+  const img = tex.image;
+  const w = img.width, h = img.height;
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  const ctx = c.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0);
+  const data = ctx.getImageData(0, 0, w, h);
+  const d = data.data;
+  const body = new THREE.Color(livery.body), accent = new THREE.Color(livery.accent);
+  const bHSL = {}, aHSL = {};
+  // 全部在 sRGB 色彩空間計算，才會跟設定的色碼一致
+  const SRGB = THREE.SRGBColorSpace;
+  body.getHSL(bHSL, SRGB); accent.getHSL(aHSL, SRGB);
+  const px = new THREE.Color(), hsl = {}, out = new THREE.Color(), rgb = {};
+  for (let i = 0; i < d.length; i += 4) {
+    px.setRGB(d[i] / 255, d[i + 1] / 255, d[i + 2] / 255, SRGB);
+    px.getHSL(hsl, SRGB);
+    const hue = hsl.h * 360;
+    if (hue < 185 || hue > 245 || hsl.s < .35) continue;   // 只處理飽和的藍色
+    if (hsl.l > .36) {
+      // 亮水藍（機身上半部）→ 機身色；以原本約 0.5 的亮度為基準保留明暗
+      out.setHSL(bHSL.h, bHSL.s, Math.min(1, bHSL.l + (hsl.l - .5) * .35), SRGB);
+    } else {
+      // 深藍（尾翼、引擎）→ 主題色；以原本約 0.25 的亮度為基準保留明暗
+      out.setHSL(aHSL.h, aHSL.s, Math.max(0, Math.min(1, aHSL.l + (hsl.l - .25) * .9)), SRGB);
+    }
+    out.getRGB(rgb, SRGB);
+    d[i] = rgb.r * 255; d[i + 1] = rgb.g * 255; d[i + 2] = rgb.b * 255;
+  }
+  ctx.putImageData(data, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.flipY = tex.flipY;
+  t.colorSpace = tex.colorSpace;
+  t.wrapS = tex.wrapS; t.wrapT = tex.wrapT;
+  t.magFilter = tex.magFilter; t.minFilter = tex.minFilter;
+  t.anisotropy = tex.anisotropy;
+  tex.dispose();
+  return t;
+}
 
 export function start(sky, theme) {
   const canvas = document.createElement("canvas");
@@ -170,6 +217,10 @@ export function start(sky, theme) {
   // 模型一載入完成就立刻開始第一趟
   let tripStart = Infinity, lastEmit = -1;
   new GLTFLoader().load("assets/models/a320.glb", (g) => {
+    const livery = CFG.livery[theme] || CFG.livery.lofi;
+    g.scene.traverse((o) => {
+      if (o.isMesh && o.material.map) o.material.map = repaint(o.material.map, livery);
+    });
     plane.add(g.scene);
     tripStart = window.__flyTime ?? clock.getElapsedTime();
   });

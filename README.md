@@ -31,7 +31,7 @@ https://baiyan412048.github.io/2026Happy/
 
 ## 第三方資源
 
-- 3D 飛機模型：A320（無標誌版），來自 [amvlab/aircraft-models](https://github.com/amvlab/aircraft-models)，以 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) 授權，未經修改（`assets/models/a320.glb`）。
+- 3D 飛機模型：A320（無標誌版），來自 [amvlab/aircraft-models](https://github.com/amvlab/aircraft-models)，以 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) 授權（`assets/models/a320.glb`）。網頁載入時會把機身塗裝重新上色（水藍機身改白色、深藍尾翼與引擎改成主題色），模型檔本身未修改。
 - 3D 引擎：[three.js](https://threejs.org/) r160，MIT 授權（`vendor/three/`）。
 - WebGL 版的雲朵著色器移植自 drift 的〈2D Clouds〉（https://www.shadertoy.com/view/4tdSWr），以 CC BY-NC-SA 3.0 授權；該段著色器沿用相同授權，僅供非商業使用。
 
