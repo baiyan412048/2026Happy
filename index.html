@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>快樂航空｜查詢訂位</title>
+<title>快樂航空｜電子機票</title>
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -48,48 +48,9 @@
   .brand span { line-height: 1.2; }
 
   /* 查詢表單 */
-  .lookup { padding: 40px 0 64px; }
-  .lookup h1 {
-    font-size: clamp(30px, 8vw, 40px);
-    line-height: 1.25; margin: 0 0 12px; font-weight: 700;
-  }
-  .lookup p { margin: 0 0 32px; color: var(--ink-soft); max-width: 34em; }
-  .field { display: block; margin-bottom: 20px; }
-  .field-label { display: block; font-weight: 500; margin-bottom: 8px; }
-  .field input {
-    width: 100%;
-    font: 600 28px/1 var(--display);
-    letter-spacing: .18em;
-    text-transform: uppercase;
-    color: var(--ink);
-    background: var(--paper);
-    border: 2px solid var(--line);
-    border-radius: 12px;
-    padding: 16px 18px;
-    transition: border-color .15s;
-  }
-  .field input::placeholder { letter-spacing: .04em; font-size: 20px; color: #9AAEBF; font-weight: 400; }
-  .field input:focus { outline: none; border-color: var(--ink); }
-  .field input[aria-invalid="true"], .field input[aria-invalid="true"]:focus { border-color: var(--coral); }
-  .hint { font-size: 14px; color: var(--ink-soft); margin-top: 8px; }
-  .error { font-size: 14px; color: #B8304A; margin-top: 4px; min-height: 1.5em; }
-  .error:empty { min-height: 0; }
-  .btn {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 100%;
-    font: 700 17px/1 var(--body);
-    color: var(--paper);
-    background: var(--ink);
-    border: 0; border-radius: 12px;
-    padding: 18px 20px;
-    cursor: pointer;
-    transition: background .15s;
-  }
-  .btn:hover { background: #0F2540; }
 
   /* 訂位結果 */
   .booking { padding: 8px 0 56px; }
-  .booking[hidden], .lookup[hidden] { display: none; }
   .status {
     display: inline-flex; align-items: center; gap: 8px;
     font-weight: 500; font-size: 15px;
@@ -228,23 +189,7 @@
     </header>
 
     <main>
-      <!-- 第一步：查詢 -->
-      <section class="lookup" id="lookup" aria-labelledby="lookup-title">
-        <h1 id="lookup-title">查詢訂位</h1>
-        <p>請輸入訂位代號，查看您的電子機票與登機證。</p>
-        <div id="lookup-form">
-          <label class="field">
-            <span class="field-label">訂位代號</span>
-            <input id="code" name="code" type="text" inputmode="latin" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8" aria-describedby="code-hint code-error" placeholder="例如 AB12CD">
-            <div class="hint" id="code-hint">訂位代號為 6 碼英文字母與數字組合。</div>
-            <div class="error" id="code-error" role="alert"></div>
-          </label>
-          <button class="btn" type="button" id="lookup-btn">查詢訂位</button>
-        </div>
-      </section>
-
-      <!-- 第二步：揭曉 -->
-      <section class="booking" id="booking" hidden aria-labelledby="booking-title">
+      <section class="booking reveal" id="booking" aria-labelledby="booking-title">
         <div class="status">
           <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="currentColor"/><path d="M6 10.5l2.6 2.6L14 7.8" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span id="booking-title">訂位已確認，機票已開立</span>
@@ -310,7 +255,7 @@
 <script>
   /* ===== 在這裡改成你們的資料 ===== */
   const CONFIG = {
-    code: "HAPPY6",              // 訂位代號（6 碼）
+    code: "HAPPY6",              // 訂位代號（顯示在條碼下方）
     passenger: "WANG / XIAOMEI", // 旅客姓名
     companion: "CHEN / DAMING",  // 同行旅客姓名
     flight: "HA 520",
@@ -398,49 +343,8 @@
     requestAnimationFrame(step);
   }
 
-  function reveal() {
-    fill();
-    $("lookup").hidden = true;
-    const b = $("booking");
-    b.hidden = false;
-    b.classList.add("reveal");
-    window.scrollTo(0, 0);
-    flyPlane();
-    $("booking-title").setAttribute("tabindex", "-1");
-    $("booking-title").focus({ preventScroll: true });
-  }
-
-  function lookup() {
-    const input = $("code");
-    const v = input.value.trim().toUpperCase();
-    if (!v) {
-      input.setAttribute("aria-invalid", "true");
-      $("code-error").textContent = "請輸入訂位代號。";
-      return;
-    }
-    if (v !== CONFIG.code.toUpperCase()) {
-      input.setAttribute("aria-invalid", "true");
-      $("code-error").textContent = "找不到這個訂位代號，請確認 6 碼英文與數字是否輸入正確。";
-      return;
-    }
-    input.removeAttribute("aria-invalid");
-    $("code-error").textContent = "";
-    reveal();
-  }
-
-  $("lookup-btn").addEventListener("click", lookup);
-  $("code").addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); lookup(); }
-  });
-
-  $("code").addEventListener("input", () => {
-    $("code").removeAttribute("aria-invalid");
-    $("code-error").textContent = "";
-  });
-
-  // 網址帶 ?code=XXXXXX 會自動填入
-  const q = new URLSearchParams(location.search).get("code");
-  if (q) $("code").value = q.toUpperCase();
+  fill();
+  flyPlane();
 </script>
 </body>
 </html>
