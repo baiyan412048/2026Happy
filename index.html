@@ -200,7 +200,7 @@
   @media (prefers-reduced-motion: reduce) {
     .reveal .pass, .reveal .companion, .reveal .notes { animation: none; }
   }
-  @media (max-width: 380px) {
+  @media (max-width: 440px) {
     .grid { grid-template-columns: repeat(2, 1fr); }
     .grid .wide { grid-column: span 2; }
   }
@@ -220,13 +220,13 @@
     <main>
       <!-- 第一步：查詢 -->
       <section class="lookup" id="lookup" aria-labelledby="lookup-title">
-        <h1 id="lookup-title">查詢你的訂位</h1>
-        <p>輸入訂位代號，就能看到你的機票和登機證。</p>
+        <h1 id="lookup-title">查詢訂位</h1>
+        <p>請輸入訂位代號，查看您的電子機票與登機證。</p>
         <div id="lookup-form">
           <label class="field">
             <span class="field-label">訂位代號</span>
             <input id="code" name="code" type="text" inputmode="latin" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8" aria-describedby="code-hint code-error" placeholder="例如 AB12CD">
-            <div class="hint" id="code-hint">代號在你收到的訊息裡，6 碼英文與數字。</div>
+            <div class="hint" id="code-hint">訂位代號為 6 碼英文字母與數字組合。</div>
             <div class="error" id="code-error" role="alert"></div>
           </label>
           <button class="btn" type="button" id="lookup-btn">查詢訂位</button>
@@ -237,14 +237,14 @@
       <section class="booking" id="booking" hidden aria-labelledby="booking-title">
         <div class="status">
           <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="currentColor"/><path d="M6 10.5l2.6 2.6L14 7.8" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span id="booking-title">已開票，旅程確認</span>
+          <span id="booking-title">訂位已確認，機票已開立</span>
         </div>
 
         <div class="route" aria-label="從桃園國際機場飛往釜山金海國際機場">
           <svg class="arc" viewBox="0 0 400 70" aria-hidden="true">
             <path class="track" id="track" d="M40 56 Q200 -14 360 56"/>
             <g id="plane" class="plane">
-              <path d="M-11 0 L4 -2.2 L9 -9 L11.5 -9 L9 -2 L13 -1.6 L15.5 -4.5 L17 -4.5 L16 0 L17 4.5 L15.5 4.5 L13 1.6 L9 2 L11.5 9 L9 9 L4 2.2 Z"/>
+              <path d="M14 0 L-1 -2.2 L-6 -9 L-8.5 -9 L-6 -2 L-10 -1.6 L-12.5 -4.5 L-14 -4.5 L-13 0 L-14 4.5 L-12.5 4.5 L-10 1.6 L-6 2 L-8.5 9 L-6 9 L-1 2.2 Z"/>
             </g>
           </svg>
           <div class="route-codes"><span>TPE</span><span class="to">PUS</span></div>
@@ -267,8 +267,8 @@
               <div><dt>登機門</dt><dd id="gate"></dd></div>
               <div class="seat"><dt>座位</dt><dd id="seat"></dd></div>
               <div><dt>艙等</dt><dd class="zh" id="cabin"></dd></div>
-              <div><dt>飛行時間</dt><dd class="zh">約 2 小時</dd></div>
-              <div><dt>行李</dt><dd class="zh">裝滿回憶</dd></div>
+              <div><dt>飛行時間</dt><dd class="zh" id="duration"></dd></div>
+              <div><dt>行李</dt><dd class="zh" id="baggage"></dd></div>
             </dl>
           </div>
           <div class="tear" aria-hidden="true"><span class="notch"></span></div>
@@ -293,28 +293,30 @@
       </section>
     </main>
 
-    <footer>快樂航空 Happy Air 是一間只為兩個人營運的航空公司。</footer>
+    <footer>© 2026 快樂航空 Happy Air</footer>
   </div>
 
 <script>
   /* ===== 在這裡改成你們的資料 ===== */
   const CONFIG = {
-    code: "HAPPY6",                 // 訂位代號（6 碼），告訴她這個
-    passenger: "我的寶貝",            // 她的名字
-    companion: "你的專屬旅伴",         // 你的名字
+    code: "HAPPY6",              // 訂位代號（6 碼）
+    passenger: "WANG / XIAOMEI", // 旅客姓名
+    companion: "CHEN / DAMING",  // 同行旅客姓名
     flight: "HA 520",
-    date: "等我們都有空的那一天",
-    boarding: "你說走就走",
+    date: "日期待定",
+    boarding: "起飛前 40 分鐘",
     gate: "A1",
     seat: "5A",
     companionSeat: "5B",
-    cabin: "雙人座艙",
-    message: "這張機票沒有期限。等我們都放假的時候，就一起去釜山看海吧。",
-    from: "— 愛你的我",
+    cabin: "經濟艙",
+    duration: "約 2 小時 15 分",
+    baggage: "托運 23 公斤",
+    message: "感謝您選擇快樂航空，期待與您在釜山相見，祝您旅途愉快。",
+    from: "快樂航空 敬上",
     notes: [
-      "本機票全程有效，不可轉讓，只能和我一起使用。",
-      "請記得攜帶護照、好心情，以及想吃的清單。",
-      "抵達後的行程，由兩位旅客共同決定。"
+      "請於班機起飛前 2 小時抵達機場，辦理報到及行李托運手續。",
+      "請攜帶效期六個月以上之有效護照。",
+      "登機門將於班機起飛前 20 分鐘關閉，請準時登機。"
     ]
   };
   /* =============================== */
@@ -330,6 +332,8 @@
     $("gate").textContent = CONFIG.gate;
     $("seat").textContent = CONFIG.seat;
     $("cabin").textContent = CONFIG.cabin;
+    $("duration").textContent = CONFIG.duration;
+    $("baggage").textContent = CONFIG.baggage;
     $("message").textContent = CONFIG.message;
     $("from").textContent = CONFIG.from;
     $("companion").textContent = CONFIG.companion;
