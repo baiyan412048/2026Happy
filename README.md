@@ -20,7 +20,7 @@ https://baiyan412048.github.io/2026Happy/
 | 版本 | 網址 |
 | --- | --- |
 | 原版（霧藍底） | https://baiyan412048.github.io/2026Happy/ |
-| Lofi 雲朵飄動 | https://baiyan412048.github.io/2026Happy/?theme=lofi |
+| Lofi 寫實雲層 | https://baiyan412048.github.io/2026Happy/?theme=lofi |
 | 粉色寫實雲層 | https://baiyan412048.github.io/2026Happy/?theme=pink |
 
 ## 備份
