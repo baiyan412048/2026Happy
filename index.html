@@ -238,6 +238,8 @@
 
   /* 3D 飛機與飛機雲（&fly） */
   .fly-layer { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  /* 有 3D 飛機時，隱藏標題上方的虛線弧線與小飛機（保留空間，版面位置不變） */
+  [data-fly] .arc { visibility: hidden; }
 
   /* lofi：褪色藍天、底片顆粒與暗角 */
   [data-theme="lofi"] .sky { background: linear-gradient(180deg, #AFC9DA 0%, #C7D9E3 45%, #DFE7EB 100%); }

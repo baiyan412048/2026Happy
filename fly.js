@@ -9,8 +9,8 @@ import { GLTFLoader } from "./vendor/three/examples/jsm/loaders/GLTFLoader.js";
 const CFG = {
   firstDelay: 1.2,     // 頁面開啟後幾秒開始第一趟（秒）
   speed: 30,           // 飛行速度（世界單位/秒）；手機上飛越畫面約 9 秒
-  gap: 12,             // 飛出畫面到下一趟的間隔（秒），讓飛機雲慢慢散去
   trailLife: 11,       // 飛機雲存在多久（秒）
+  // 飛機飛出畫面後，等最後一段飛機雲完全消失再多 1 秒才開始下一趟（無限循環）
   wind: -1.6,          // 飛機雲隨風往左飄的速度（世界單位/秒）
 };
 
@@ -176,7 +176,7 @@ export function start(sky, theme) {
     trailMat.uniforms.uTime.value = t;
     trailMat.uniforms.uScale.value = renderer.domElement.height * .9;
 
-    if (at(t) > 1 && t > tripStart + flight + CFG.gap) tripStart = t;   // 下一趟
+    if (at(t) > 1 && t > tripStart + flight + CFG.trailLife + 1) tripStart = t;   // 飛機雲消失後重飛
     const k = at(t);
     if (k >= 0 && k <= 1 && plane.children.length) {
       plane.visible = true;
