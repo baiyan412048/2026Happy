@@ -7,7 +7,7 @@ import { GLTFLoader } from "./vendor/three/examples/jsm/loaders/GLTFLoader.js";
 
 // ===== 可調整的參數 =====
 const CFG = {
-  firstDelay: 1.2,     // 頁面開啟後幾秒開始第一趟（秒）
+  scale: 1.2,          // 飛機與飛機雲的大小倍率
   speed: 30,           // 飛行速度（世界單位/秒）；手機上飛越畫面約 9 秒
   trailLife: 11,       // 飛機雲存在多久（秒）
   // 飛機飛出畫面後，等最後一段飛機雲完全消失再多 1 秒才開始下一趟（無限循環）
@@ -51,14 +51,15 @@ export function start(sky, theme) {
   function fitPath() {
     camera.updateMatrixWorld();
     const L = A.distanceTo(B);
-    // 投影到畫面：x、y 都在 -1～+1 之間代表在畫面內；超出 1.35 視為完全離開畫面
-    const inside = (k) => {
+    // 投影到畫面：x、y 都在 -1～+1 之間代表在畫面內。
+    // 進場點只留機身長度的餘裕，一開始飛機頭就會出現；出場點多留一些，確保整架飛出去
+    const inside = (k, m) => {
       const v = tmp.copy(A).addScaledVector(dir, k * L).project(camera);
-      return Math.abs(v.x) < 1.35 && Math.abs(v.y) < 1.35;
+      return Math.abs(v.x) < m && Math.abs(v.y) < m;
     };
     let k0 = 0, k1 = 1;
-    while (inside(k0) && k0 > -4) k0 -= .02;
-    while (inside(k1) && k1 < 5) k1 += .02;
+    while (inside(k0, 1.12) && k0 > -4) k0 -= .01;
+    while (inside(k1, 1.35) && k1 < 5) k1 += .02;
     from.copy(A).addScaledVector(dir, k0 * L);
     to.copy(A).addScaledVector(dir, k1 * L);
     // 寬螢幕航線較長：飛行時間限制在 8～11 秒
@@ -123,7 +124,7 @@ export function start(sky, theme) {
         p.y += (seed - .5) * .12 * age;                      // 慢慢上下散開
         vec4 mv = modelViewMatrix * vec4(p, 1.);
         gl_Position = projectionMatrix * mv;
-        float size = 2.2 + age * 1.1;                        // 越久越擴散
+        float size = (2.2 + age * 1.1) * ${CFG.scale.toFixed(2)};  // 越久越擴散
         gl_PointSize = size * uScale / -mv.z;
         // 剛噴出時看不見（真實飛機雲會在機後一小段才形成），之後慢慢淡出
         vAlpha = (age < 0. || age > uLife) ? 0. :
@@ -144,9 +145,10 @@ export function start(sky, theme) {
   let head = 0;
   function emit(worldPos, t) {
     const i = head; head = (head + 1) % MAX;
-    pos[i * 3] = worldPos.x + (Math.random() - .5) * .6;
-    pos[i * 3 + 1] = worldPos.y + (Math.random() - .5) * .6;
-    pos[i * 3 + 2] = worldPos.z + (Math.random() - .5) * .6;
+    const j = .6 * CFG.scale;
+    pos[i * 3] = worldPos.x + (Math.random() - .5) * j;
+    pos[i * 3 + 1] = worldPos.y + (Math.random() - .5) * j;
+    pos[i * 3 + 2] = worldPos.z + (Math.random() - .5) * j;
     birth[i] = t; seed[i] = Math.random();
   }
 
@@ -160,15 +162,20 @@ export function start(sky, theme) {
   // lookAt 讓物件的 -Z 朝向目標；模型機頭在 +X，所以再繞 Y 轉 90°
   plane.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2));
   // 兩具引擎尾端的位置（模型座標，機頭朝 +X），換成世界座標的偏移
+  const clock = new THREE.Clock();
+  plane.scale.setScalar(CFG.scale);
   const engines = [new THREE.Vector3(-4, -1.6, 5.8), new THREE.Vector3(-4, -1.6, -5.8)]
-    .map((e) => e.applyQuaternion(plane.quaternion));
+    .map((e) => e.multiplyScalar(CFG.scale).applyQuaternion(plane.quaternion));
 
-  new GLTFLoader().load("assets/models/a320.glb", (g) => plane.add(g.scene));
+  // 模型一載入完成就立刻開始第一趟
+  let tripStart = Infinity, lastEmit = -1;
+  new GLTFLoader().load("assets/models/a320.glb", (g) => {
+    plane.add(g.scene);
+    tripStart = window.__flyTime ?? clock.getElapsedTime();
+  });
 
   // ===== 動畫 =====
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const clock = new THREE.Clock();
-  let tripStart = CFG.firstDelay, lastEmit = -1;
   const at = (t) => (t - tripStart) / flight;  // 這一趟的進度 0→1
 
   function frame() {

@@ -17,7 +17,20 @@
     if (t !== "lofi" && t !== "pink") return;
     var root = document.documentElement;
     root.dataset.theme = t;
-    if (q.has("fly")) root.dataset.fly = "1";
+    if (q.has("fly")) {
+      root.dataset.fly = "1";
+      // 3D 引擎、飛行程式與飛機模型在頁面一開始就同時下載，飛機才能一打開就飛出來
+      [["modulepreload", "vendor/three/build/three.module.min.js"],
+       ["modulepreload", "vendor/three/examples/jsm/loaders/GLTFLoader.js"],
+       ["modulepreload", "vendor/three/examples/jsm/utils/BufferGeometryUtils.js"],
+       ["modulepreload", "fly.js"],
+       ["preload", "assets/models/a320.glb"]].forEach(function (x) {
+        var l = document.createElement("link");
+        l.rel = x[0]; l.href = x[1];
+        if (x[0] === "preload") { l.as = "fetch"; l.crossOrigin = "anonymous"; }
+        document.head.appendChild(l);
+      });
+    }
     if (q.has("webgl")) { root.dataset.gl = "1"; return; }
     // 普通版：雲層圖儘早開始下載，一打開就能顯示
     for (var i = 1; i <= 3; i++) {
@@ -181,23 +194,17 @@
   footer { padding: 24px 0 40px; font-size: 13px; color: var(--ink-soft); text-align: center; }
 
   /* ===== 進場動畫 =====
-     頁面一打開就同時開始，只有極短的先後順序，讓畫面由上往下展開；
+     每個元件 2 秒；標題組 0.5 秒後開始，登機證與下方內容 0.8 秒後開始；
      背景的雲與 3D 飛機不在此列，會一直持續。 */
   .brand, .status, .route-cities, .pass, .companion, .notes, footer {
-    animation: enter-rise 1.2s cubic-bezier(.16, .84, .3, 1) both;
+    animation: enter-rise 2s cubic-bezier(.16, .84, .3, 1) both;
   }
-  .arc { animation: enter-fade 1.2s ease-out both; }
-  .route-codes span:first-child { display: inline-block; animation: enter-left 1.3s cubic-bezier(.16, .84, .3, 1) both; }
-  .route-codes .to { display: inline-block; animation: enter-right 1.3s cubic-bezier(.16, .84, .3, 1) both; }
-  .brand        { animation-delay: 0s; }
-  .status       { animation-delay: .06s; }
-  .arc          { animation-delay: .1s; }
-  .route-codes span { animation-delay: .1s; }
-  .route-cities { animation-delay: .18s; }
-  .pass         { animation-delay: .22s; }
-  .companion    { animation-delay: .3s; }
-  .notes        { animation-delay: .36s; }
-  footer        { animation-delay: .42s; }
+  .arc { animation: enter-fade 2s ease-out both; }
+  .route-codes span:first-child { display: inline-block; animation: enter-left 2s cubic-bezier(.16, .84, .3, 1) both; }
+  .route-codes .to { display: inline-block; animation: enter-right 2s cubic-bezier(.16, .84, .3, 1) both; }
+  /* 先標題（0.5 秒），再登機證與下方內容（0.8 秒） */
+  .brand, .status, .arc, .route-codes span, .route-cities { animation-delay: .5s; }
+  .pass, .companion, .notes, footer { animation-delay: .8s; }
   @keyframes enter-rise  { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
   @keyframes enter-fade  { from { opacity: 0; } to { opacity: 1; } }
   @keyframes enter-left  { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
