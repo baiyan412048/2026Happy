@@ -19,7 +19,7 @@ https://baiyan412048.github.io/2026Happy/
 
 | 版本 | 網址 |
 | --- | --- |
-| 原版（霧藍底） | https://baiyan412048.github.io/2026Happy/ |
+| **預設：Lofi ⇄ 粉色輪替**（WebGL 雲＋3D 飛機，每飛一趟換一次主題，漸變轉場） | https://baiyan412048.github.io/2026Happy/ |
 | Lofi 寫實雲層 | https://baiyan412048.github.io/2026Happy/?theme=lofi |
 | 粉色寫實雲層 | https://baiyan412048.github.io/2026Happy/?theme=pink |
 | Lofi 寫實雲層（WebGL，雲會變化） | https://baiyan412048.github.io/2026Happy/?theme=lofi&webgl |
@@ -37,6 +37,6 @@ https://baiyan412048.github.io/2026Happy/
 
 ## 備份
 
-- 分支 `backup-v1-original`：加入背景版本前的原始版本
+- 分支 `backup-v1-original`：加入背景版本前的原始版本（霧藍底，現在的預設網址已改為輪替版）
 - `backup/v1-original.html`：同一份原版的獨立檔案，可直接開啟
 - 分支 `backup-v2-canvas-clouds` 與 `backup/v2-canvas-clouds.html`：加入 WebGL 前的 lofi／粉色雲層版本

@@ -10,14 +10,19 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 <script type="importmap">{ "imports": { "three": "./vendor/three/build/three.module.min.js" } }</script>
 <script>
-  // 背景主題：網址加 ?theme=lofi 或 ?theme=pink；再加 &webgl 改用 WebGL 即時雲；加 &fly 顯示 3D 飛機與飛機雲
+  // 背景主題
+  //   不帶參數（預設）：Lofi 與粉色跟著飛機每一趟輪替，使用 WebGL 雲＋3D 飛機
+  //   ?theme=lofi 或 ?theme=pink：固定單一主題；再加 &webgl 改用 WebGL 即時雲；加 &fly 顯示 3D 飛機與飛機雲
   (function () {
     var q = new URLSearchParams(location.search);
     var t = q.get("theme");
+    var cycle = !t;
+    if (cycle) t = "lofi";                      // 第一趟是 Lofi
     if (t !== "lofi" && t !== "pink") return;
     var root = document.documentElement;
     root.dataset.theme = t;
-    if (q.has("fly")) {
+    if (cycle) root.dataset.cycle = "1";
+    if (cycle || q.has("fly")) {
       root.dataset.fly = "1";
       // 3D 引擎、飛行程式與飛機模型在頁面一開始就同時下載，飛機才能一打開就飛出來
       [["modulepreload", "vendor/three/build/three.module.min.js"],
@@ -31,7 +36,7 @@
         document.head.appendChild(l);
       });
     }
-    if (q.has("webgl")) { root.dataset.gl = "1"; return; }
+    if (cycle || q.has("webgl")) { root.dataset.gl = "1"; return; }
     // 普通版：雲層圖儘早開始下載，一打開就能顯示
     for (var i = 1; i <= 3; i++) {
       var l = document.createElement("link");
@@ -41,6 +46,9 @@
   })();
 </script>
 <style>
+  /* 主題切換時重點色要能漸變，所以註冊成可動畫的顏色屬性 */
+  @property --coral { syntax: "<color>"; inherits: true; initial-value: #E2566E; }
+  :root { transition: --coral 5s ease; }
   :root {
     --ink: #16324F;        /* 海港深藍：文字 */
     --ink-soft: #4E6A85;
@@ -266,8 +274,9 @@
 
   /* lofi：褪色藍天、底片顆粒與暗角 */
   [data-theme="lofi"] .sky { background: linear-gradient(180deg, #AFC9DA 0%, #C7D9E3 45%, #DFE7EB 100%); }
-  .grain, .vignette { display: none; position: absolute; inset: 0; }
-  [data-theme="lofi"] .grain, [data-theme="lofi"] .vignette { display: block; }
+  .grain, .vignette { display: none; position: absolute; inset: 0; transition: opacity 5s ease; }
+  [data-theme] .grain, [data-theme] .vignette { display: block; opacity: 0; }
+  [data-theme="lofi"] .grain, [data-theme="lofi"] .vignette { opacity: 1; }
   .grain { transform: translateZ(0); }
   .vignette { background: radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(60, 80, 100, .18) 100%); }
 
@@ -598,16 +607,28 @@
     const U = (n) => gl.getUniformLocation(prog, n);
     gl.uniform1f(U("cloudscale"), T.scale);
     gl.uniform1f(U("speed"), T.speed);
-    gl.uniform1f(U("clouddark"), T.dark);
-    gl.uniform1f(U("cloudlight"), T.light);
-    gl.uniform1f(U("cloudcover"), T.cover);
-    gl.uniform1f(U("cloudalpha"), T.alpha);
-    gl.uniform1f(U("skytint"), T.skytint);
-    gl.uniform3fv(U("skycolour1"), T.skyTop);
-    gl.uniform3fv(U("skycolour2"), T.skyBottom);
-    gl.uniform3fv(U("cloudshadow"), T.shadow);
-    gl.uniform3fv(U("cloudmid"), T.mid);
-    gl.uniform3fv(U("cloudhi"), T.hi);
+    // 會隨主題變化的參數：切換時在兩組數值之間漸變
+    const V1 = { dark: "clouddark", light: "cloudlight", cover: "cloudcover", alpha: "cloudalpha", skytint: "skytint" };
+    const V3 = { skyTop: "skycolour1", skyBottom: "skycolour2", shadow: "cloudshadow", mid: "cloudmid", hi: "cloudhi" };
+    const loc1 = {}, loc3 = {};
+    for (const k in V1) loc1[k] = U(V1[k]);
+    for (const k in V3) loc3[k] = U(V3[k]);
+    const copy = (p) => { const o = {}; for (const k in V1) o[k] = p[k]; for (const k in V3) o[k] = p[k].slice(); return o; };
+    function apply(p) {
+      for (const k in V1) gl.uniform1f(loc1[k], p[k]);
+      for (const k in V3) gl.uniform3fv(loc3[k], p[k]);
+    }
+    let cur = copy(T), tween = null;
+    apply(cur);
+    function step(now) {
+      if (!tween) return;
+      const k = Math.min(1, (now - tween.start) / tween.dur);
+      const e = k * k * (3 - 2 * k);
+      for (const key in V1) cur[key] = tween.from[key] + (tween.to[key] - tween.from[key]) * e;
+      for (const key in V3) for (let i = 0; i < 3; i++) cur[key][i] = tween.from[key][i] + (tween.to[key][i] - tween.from[key][i]) * e;
+      apply(cur);
+      if (k >= 1) tween = null;
+    }
     const uRes = U("iResolution"), uTime = U("iTime");
 
     // 以較低解析度計算再放大：雲本來就柔和，手機也省電
@@ -624,7 +645,7 @@
       return true;
     }
     const t0 = performance.now() - 20000 - Math.random() * 60000; // 每次打開的雲都不一樣
-    const draw = (now) => { gl.uniform1f(uTime, (now - t0) / 1000); gl.drawArrays(gl.TRIANGLES, 0, 3); };
+    const draw = (now) => { step(now); gl.uniform1f(uTime, (now - t0) / 1000); gl.drawArrays(gl.TRIANGLES, 0, 3); };
     resize();
     addEventListener("resize", () => { if (resize()) draw(performance.now()); });
     sky.prepend(canvas);
@@ -633,18 +654,35 @@
       const loop = (now) => { draw(now); requestAnimationFrame(loop); };
       requestAnimationFrame(loop);
     }
-    return true;
+    return {
+      // 漸變到另一個主題（毫秒）
+      setTheme(n, dur) { tween = { from: copy(cur), to: GL_THEMES[n], start: performance.now(), dur }; }
+    };
   }
 
-  const theme = document.documentElement.dataset.theme;
-  if (theme === "lofi") $("grain").style.backgroundImage = `url(${noiseTile(160)})`;
+  const root = document.documentElement;
+  let theme = root.dataset.theme;
+  if (theme) $("grain").style.backgroundImage = `url(${noiseTile(160)})`;
   // WebGL 不支援時，自動改用普通版的雲層圖
-  if (document.documentElement.dataset.gl && !buildWebGLClouds($("sky"), theme)) {
-    delete document.documentElement.dataset.gl;
+  let clouds = null;
+  if (root.dataset.gl) {
+    clouds = buildWebGLClouds($("sky"), theme);
+    if (!clouds) delete root.dataset.gl;
   }
-  // 3D 飛機：只有網址加 &fly 才載入 three.js 與飛機模型
-  if (document.documentElement.dataset.fly) {
-    import("./fly.js").then((m) => { window.__fly = m.start($("sky"), theme); })
+
+  // 主題輪替：飛機飛出畫面、飛機雲散到一半時開始漸變，下一趟飛機進場前完成
+  const THEME_FADE = 5000;
+  function nextTheme() {
+    theme = theme === "lofi" ? "pink" : "lofi";
+    root.dataset.theme = theme;                 // 重點色、顆粒與暗角以 CSS 漸變
+    if (clouds) clouds.setTheme(theme, THEME_FADE);
+    if (window.__fly) window.__fly.setTheme(theme, THEME_FADE);
+  }
+
+  // 3D 飛機：預設（輪替模式）或網址加 &fly 才載入 three.js 與飛機模型
+  if (root.dataset.fly) {
+    import("./fly.js")
+      .then((m) => { window.__fly = m.start($("sky"), theme, { onGap: root.dataset.cycle ? nextTheme : null }); })
       .catch((e) => console.warn("3D 飛機載入失敗", e));
   }
 

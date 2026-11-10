@@ -63,11 +63,10 @@ function repaint(tex, livery) {
   t.wrapS = tex.wrapS; t.wrapT = tex.wrapT;
   t.magFilter = tex.magFilter; t.minFilter = tex.minFilter;
   t.anisotropy = tex.anisotropy;
-  tex.dispose();
   return t;
 }
 
-export function start(sky, theme) {
+export function start(sky, theme, opts = {}) {
   const canvas = document.createElement("canvas");
   canvas.className = "fly-layer";
   // 放在雲層之上、lofi 顆粒之下
@@ -81,9 +80,14 @@ export function start(sky, theme) {
   const camera = new THREE.PerspectiveCamera(CAMERA.fov, 1, 1, 4000);
 
   // 光線：天空的柔光 + 左上方的陽光（粉色主題帶一點暖粉）
-  const pink = theme === "pink";
-  scene.add(new THREE.HemisphereLight(pink ? 0xfff0f4 : 0xf2f6fa, pink ? 0xc9a3b6 : 0x9fb3c2, 2.2));
-  const sun = new THREE.DirectionalLight(pink ? 0xffe9e0 : 0xfff6e8, 2.4);
+  const LIGHT = {
+    pink: { sky: 0xfff0f4, ground: 0xc9a3b6, sun: 0xffe9e0, trail: 0xfff4f7 },
+    lofi: { sky: 0xf2f6fa, ground: 0x9fb3c2, sun: 0xfff6e8, trail: 0xffffff },
+  };
+  const L0 = LIGHT[theme] || LIGHT.lofi;
+  const hemi = new THREE.HemisphereLight(L0.sky, L0.ground, 2.2);
+  scene.add(hemi);
+  const sun = new THREE.DirectionalLight(L0.sun, 2.4);
   sun.position.set(-60, 120, 80);
   scene.add(sun);
 
@@ -158,7 +162,7 @@ export function start(sky, theme) {
     transparent: true, depthWrite: false,
     uniforms: {
       uTime: { value: 0 }, uLife: { value: CFG.trailLife }, uWind: { value: CFG.wind },
-      uScale: { value: 1 }, uColor: { value: new THREE.Color(pink ? 0xfff4f7 : 0xffffff) }
+      uScale: { value: 1 }, uColor: { value: new THREE.Color(L0.trail) }
     },
     vertexShader: `
       attribute float birth; attribute float seed;
@@ -214,13 +218,46 @@ export function start(sky, theme) {
   const engines = [new THREE.Vector3(-4, -1.6, 5.8), new THREE.Vector3(-4, -1.6, -5.8)]
     .map((e) => e.multiplyScalar(CFG.scale).applyQuaternion(plane.quaternion));
 
+  // ===== 主題 =====
+  let current = LIGHT[theme] ? theme : "lofi", liveryShown = current;
+  const liveries = [];
+  function applyLivery() {
+    liveryShown = current;
+    liveries.forEach((l) => { l.mesh.material.map = l[current]; });
+  }
+  const col = (hex) => new THREE.Color(hex);
+  let tween = null, nowT = 0;
+  function setTheme(name, ms) {
+    if (!LIGHT[name]) return;
+    current = name;
+    tween = {
+      start: nowT, dur: ms / 1000,
+      from: { sky: hemi.color.clone(), ground: hemi.groundColor.clone(), sun: sun.color.clone(), trail: trailMat.uniforms.uColor.value.clone() },
+      to: { sky: col(LIGHT[name].sky), ground: col(LIGHT[name].ground), sun: col(LIGHT[name].sun), trail: col(LIGHT[name].trail) },
+    };
+    if (!plane.visible) applyLivery();
+  }
+  function stepTheme(t) {
+    if (!tween) return;
+    const k = Math.min(1, (t - tween.start) / tween.dur), e = k * k * (3 - 2 * k);
+    hemi.color.lerpColors(tween.from.sky, tween.to.sky, e);
+    hemi.groundColor.lerpColors(tween.from.ground, tween.to.ground, e);
+    sun.color.lerpColors(tween.from.sun, tween.to.sun, e);
+    trailMat.uniforms.uColor.value.lerpColors(tween.from.trail, tween.to.trail, e);
+    if (k >= 1) tween = null;
+  }
+
   // 模型一載入完成就立刻開始第一趟
-  let tripStart = Infinity, lastEmit = -1;
+  let tripStart = Infinity, lastEmit = -1, gapFired = false;
   new GLTFLoader().load("assets/models/a320.glb", (g) => {
-    const livery = CFG.livery[theme] || CFG.livery.lofi;
+    // 兩種主題的塗裝都先準備好，換主題時在飛機不在畫面上的空檔切換
     g.scene.traverse((o) => {
-      if (o.isMesh && o.material.map) o.material.map = repaint(o.material.map, livery);
+      if (!o.isMesh || !o.material.map) return;
+      const orig = o.material.map;
+      liveries.push({ mesh: o, lofi: repaint(orig, CFG.livery.lofi), pink: repaint(orig, CFG.livery.pink) });
+      orig.dispose();
     });
+    applyLivery();
     plane.add(g.scene);
     tripStart = window.__flyTime ?? clock.getElapsedTime();
   });
@@ -231,10 +268,20 @@ export function start(sky, theme) {
 
   function frame() {
     const t = window.__flyTime ?? clock.getElapsedTime();  // __flyTime 僅供測試
+    nowT = t;
+    stepTheme(t);
     trailMat.uniforms.uTime.value = t;
     trailMat.uniforms.uScale.value = renderer.domElement.height * .9;
 
-    if (at(t) > 1 && t > tripStart + flight + CFG.trailLife + 1) tripStart = t;   // 飛機雲消失後重飛
+    // 飛機飛出後、飛機雲散到一半時通知外部（主題輪替從這裡開始漸變）
+    if (at(t) > 1 && !gapFired && t > tripStart + flight + CFG.trailLife * .5) {
+      gapFired = true;
+      if (opts.onGap) opts.onGap();
+    }
+    if (at(t) > 1 && t > tripStart + flight + CFG.trailLife + 1) {   // 飛機雲消失後重飛
+      tripStart = t; gapFired = false;
+      if (liveryShown !== current) applyLivery();
+    }
     const k = at(t);
     if (k >= 0 && k <= 1 && plane.children.length) {
       plane.visible = true;
@@ -256,5 +303,5 @@ export function start(sky, theme) {
     requestAnimationFrame(frame);
   }
   if (!reduce) requestAnimationFrame(frame);
-  return { scene, camera, plane, renderer, get flight() { return flight; } };
+  return { scene, camera, plane, renderer, setTheme, get flight() { return flight; }, get theme() { return current; } };
 }
