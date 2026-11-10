@@ -222,15 +222,15 @@
       <section class="lookup" id="lookup" aria-labelledby="lookup-title">
         <h1 id="lookup-title">查詢你的訂位</h1>
         <p>輸入訂位代號，就能看到你的機票和登機證。</p>
-        <form id="lookup-form" novalidate>
+        <div id="lookup-form">
           <label class="field">
             <span class="field-label">訂位代號</span>
             <input id="code" name="code" type="text" inputmode="latin" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8" aria-describedby="code-hint code-error" placeholder="例如 AB12CD">
             <div class="hint" id="code-hint">代號在你收到的訊息裡，6 碼英文與數字。</div>
             <div class="error" id="code-error" role="alert"></div>
           </label>
-          <button class="btn" type="submit">查詢訂位</button>
-        </form>
+          <button class="btn" type="button" id="lookup-btn">查詢訂位</button>
+        </div>
       </section>
 
       <!-- 第二步：揭曉 -->
@@ -395,8 +395,7 @@
     $("booking-title").focus({ preventScroll: true });
   }
 
-  $("lookup-form").addEventListener("submit", (e) => {
-    e.preventDefault();
+  function lookup() {
     const input = $("code");
     const v = input.value.trim().toUpperCase();
     if (!v) {
@@ -412,6 +411,11 @@
     input.removeAttribute("aria-invalid");
     $("code-error").textContent = "";
     reveal();
+  }
+
+  $("lookup-btn").addEventListener("click", lookup);
+  $("code").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); lookup(); }
   });
 
   $("code").addEventListener("input", () => {
