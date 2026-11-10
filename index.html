@@ -8,6 +8,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<script>
+  // 背景主題：網址加 ?theme=lofi 或 ?theme=pink
+  (function () {
+    var t = new URLSearchParams(location.search).get("theme");
+    if (t === "lofi" || t === "pink") document.documentElement.dataset.theme = t;
+  })();
+</script>
 <style>
   :root {
     --ink: #16324F;        /* 海港深藍：文字 */
@@ -175,9 +182,50 @@
     .grid { grid-template-columns: repeat(2, 1fr); }
     .grid .wide { grid-column: span 2; }
   }
+
+  /* ===== 背景主題：?theme=lofi / ?theme=pink ===== */
+  .sky { display: none; position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+  .wrap { position: relative; z-index: 1; }
+  [data-theme] .sky { display: block; }
+
+  /* lofi：霧藍天空、扁平雲朵慢慢飄過、底片顆粒 */
+  [data-theme="lofi"] .sky { background: linear-gradient(180deg, #CADFEA 0%, #DCE9F0 45%, var(--mist) 100%); }
+  .lofi-cloud {
+    position: absolute; left: 0; top: var(--top);
+    width: var(--w); height: auto;
+    opacity: var(--op);
+    filter: blur(var(--blur));
+    animation: drift var(--dur) linear infinite;
+    animation-delay: var(--delay);
+    will-change: transform;
+  }
+  @keyframes drift { from { transform: translateX(-100%); } to { transform: translateX(100vw); } }
+  .grain {
+    position: absolute; inset: 0;
+    opacity: .14; mix-blend-mode: multiply;
+  }
+
+  /* pink：粉色寫實雲層，兩層不同速度飄動 */
+  [data-theme="pink"] { --coral: #C93A5C; }
+  [data-theme="pink"] .sky { background: linear-gradient(180deg, #CFE1EE 0%, #DFE8F0 50%, #EDE6EE 100%); }
+  .pink-layer {
+    position: absolute; top: 0; left: 0; height: 100%;
+    width: 200%;
+    background-repeat: repeat-x;
+    will-change: transform;
+    animation: slide var(--dur) linear infinite, fadein 1.2s ease-out both;
+  }
+  @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slide { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lofi-cloud { animation-play-state: paused; }
+    .pink-layer { animation: none; }
+  }
 </style>
 </head>
 <body>
+  <div class="sky" id="sky" aria-hidden="true"></div>
   <div class="wrap">
     <header class="brand">
       <svg viewBox="0 0 40 40" aria-hidden="true">
@@ -345,6 +393,155 @@
     place(0);
     requestAnimationFrame(step);
   }
+
+
+  /* ===== 背景主題 ===== */
+  // 可重現的亂數
+  function rng(seed) {
+    return function () {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed / 4294967296;
+    };
+  }
+
+  // lofi：扁平雲朵（底部一層淡藍陰影）
+  function lofiCloudSVG(r) {
+    const n = 3 + Math.floor(r() * 3);
+    const W = 200, base = 70;
+    let bumps = "";
+    for (let i = 0; i < n; i++) {
+      const cx = 30 + (140 / (n - 1)) * i + (r() - .5) * 14;
+      const mid = 1 - Math.abs(i - (n - 1) / 2) / ((n - 1) / 2 + .5);
+      const rad = 18 + mid * 22 + r() * 8;
+      bumps += `<circle cx="${cx.toFixed(1)}" cy="${(base - rad * .55).toFixed(1)}" r="${rad.toFixed(1)}"/>`;
+    }
+    const body = `<rect x="14" y="${base - 22}" width="172" height="30" rx="15"/>`;
+    return `<svg viewBox="0 0 ${W} 90" xmlns="http://www.w3.org/2000/svg">
+      <g fill="#C3D5E1" transform="translate(0 6)">${bumps}${body}</g>
+      <g fill="#FFFFFF">${bumps}${body}</g></svg>`;
+  }
+
+  function noiseTile(size, alpha) {
+    const c = document.createElement("canvas");
+    c.width = c.height = size;
+    const ctx = c.getContext("2d");
+    const img = ctx.createImageData(size, size);
+    for (let i = 0; i < img.data.length; i += 4) {
+      const v = 120 + Math.random() * 135;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+      img.data[i + 3] = alpha;
+    }
+    ctx.putImageData(img, 0, 0);
+    return c.toDataURL();
+  }
+
+  function buildLofi(sky) {
+    const r = rng(1989);
+    const count = 7;
+    for (let i = 0; i < count; i++) {
+      const wrap = document.createElement("div");
+      wrap.className = "lofi-cloud";
+      const near = i % 3 === 0;
+      const w = near ? 260 + r() * 140 : 140 + r() * 120;
+      const dur = (near ? 70 : 110) + r() * 50;
+      wrap.style.cssText =
+        `--top:${(4 + (i / count) * 88 + (r() - .5) * 6).toFixed(1)}%;` +
+        `--w:${w.toFixed(0)}px;--op:${near ? .95 : .75};` +
+        `--blur:${near ? 0 : 1.5}px;--dur:${dur.toFixed(0)}s;` +
+        `--delay:${(-r() * dur).toFixed(1)}s`;
+      wrap.innerHTML = lofiCloudSVG(r);
+      sky.appendChild(wrap);
+    }
+    const g = document.createElement("div");
+    g.className = "grain";
+    g.style.backgroundImage = `url(${noiseTile(160, 255)})`;
+    sky.appendChild(g);
+  }
+
+  // pink：用分形雜訊畫出寫實雲層（水平可無縫循環）
+  function cloudTexture(w, h, seed, opts) {
+    const r = rng(seed);
+    const P = 256, perm = new Uint8Array(P), val = new Float32Array(P);
+    for (let i = 0; i < P; i++) { perm[i] = i; val[i] = r(); }
+    for (let i = P - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [perm[i], perm[j]] = [perm[j], perm[i]]; }
+    const hash = (x, y) => val[perm[(perm[x & 255] + y) & 255]];
+    const smooth = (t) => t * t * (3 - 2 * t);
+    function noise(x, y, period) {
+      const x0 = Math.floor(x), y0 = Math.floor(y);
+      const fx = smooth(x - x0), fy = smooth(y - y0);
+      const xa = ((x0 % period) + period) % period, xb = (xa + 1) % period;
+      const a = hash(xa, y0), b = hash(xb, y0), c = hash(xa, y0 + 1), d = hash(xb, y0 + 1);
+      return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy;
+    }
+    function fbm(x, y) {
+      let sum = 0, amp = .6, period = opts.cells, f = 1;
+      for (let o = 0; o < 6; o++) {
+        sum += amp * noise(x * f, y * f, period);
+        amp *= .44; f *= 2; period *= 2;
+      }
+      return sum;
+    }
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    const ctx = c.getContext("2d");
+    const img = ctx.createImageData(w, h);
+    const sx = opts.cells / w, sy = opts.cells / w;
+    const hi = [255, 242, 246], mid = [246, 182, 204], lo = [214, 120, 158], warm = [253, 210, 196];
+    const shadeOff = Math.max(2, h * .012);
+    for (let y = 0; y < h; y++) {
+      const v = y / h;
+      const band = opts.band(v);
+      for (let x = 0; x < w; x++) {
+        const d = fbm(x * sx, y * sy) * band;
+        let a = (d - opts.lo) / (opts.hi - opts.lo);
+        a = a <= 0 ? 0 : a >= 1 ? 1 : a * a * (3 - 2 * a);
+        const i = (y * w + x) * 4;
+        if (a === 0) { img.data[i + 3] = 0; continue; }
+        // 光從上方來：上方較密的地方，下方就比較暗
+        const above = fbm(x * sx, (y - shadeOff) * sy) * opts.band(Math.max(0, (y - shadeOff) / h));
+        let light = .58 + (d - above) * 9 + (a - .5) * .35;
+        light = light < 0 ? 0 : light > 1 ? 1 : light;
+        let col;
+        if (light > .5) { const t = (light - .5) * 2; col = mid.map((m, k) => m + (hi[k] - m) * t); }
+        else { const t = light * 2; col = lo.map((l, k) => l + (mid[k] - l) * t); }
+        const wt = (1 - v) * .35;
+        col = col.map((cc, k) => cc + (warm[k] - cc) * wt);
+        img.data[i] = col[0]; img.data[i + 1] = col[1]; img.data[i + 2] = col[2];
+        img.data[i + 3] = a * opts.alpha * 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    return c.toDataURL();
+  }
+
+  function buildPink(sky) {
+    const H = Math.max(innerHeight, 640);
+    const W = Math.max(Math.round(innerWidth * 2), 1200); // 一張可循環的雲層寬度
+    const scale = .5; // 半解析度產生，雲朵本來就柔和
+    const tw = Math.round(W * scale), th = Math.round(H * scale);
+    const layers = [
+      // 遠層：較大、較淡、較慢
+      { seed: 2019, cells: Math.round(W / 380), lo: .43, hi: .6, alpha: .8, dur: 260,
+        band: (v) => .88 + .22 * Math.pow(1 - v, 1.5) + .12 * Math.pow(v, 2) },
+      // 近層：較小、較立體、較快
+      { seed: 14, cells: Math.round(W / 260), lo: .47, hi: .6, alpha: 1, dur: 160,
+        band: (v) => .82 + .3 * Math.pow(1 - v, 2.2) + .22 * Math.pow(v, 3) }
+    ];
+    layers.forEach((L) => {
+      const el = document.createElement("div");
+      el.className = "pink-layer";
+      el.style.backgroundImage = `url(${cloudTexture(tw, th, L.seed, L)})`;
+      el.style.backgroundSize = `${W}px 100%`;
+      el.style.width = `${W * 2}px`;
+      el.style.setProperty("--dur", `${L.dur}s`);
+      sky.appendChild(el);
+    });
+  }
+
+  const theme = document.documentElement.dataset.theme;
+  if (theme === "lofi") buildLofi($("sky"));
+  // 粉色雲層運算較重，等飛機降落後再產生並淡入，避免動畫卡頓
+  if (theme === "pink") setTimeout(() => buildPink($("sky")), reduceMotion ? 0 : 1700);
 
   fill();
   flyPlane();
