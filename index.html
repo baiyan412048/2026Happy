@@ -138,9 +138,9 @@
   .stub { padding: 26px 20px 22px; display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: end; }
   .stub-msg { margin: 0; font-size: 16px; line-height: 1.75; }
   .stub-msg .from { display: block; margin-top: 6px; font-size: 14px; color: var(--ink-soft); }
-  .barcode { width: 92px; height: 64px; display: block; }
+  .barcode { width: 100%; min-width: 92px; height: 64px; display: block; }
   .barcode rect { fill: var(--ink); }
-  .code-text { font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: .2em; text-align: center; margin-top: 4px; }
+  .code-text { font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: .2em; text-align: center; margin-top: 4px; margin-right: -.2em; }
 
   /* 同行旅客 */
   .companion {
@@ -231,7 +231,7 @@
           <div class="stub">
             <p class="stub-msg"><span id="message"></span><span class="from" id="from"></span></p>
             <div>
-              <svg class="barcode" id="barcode" viewBox="0 0 92 64" aria-hidden="true"></svg>
+              <svg class="barcode" id="barcode" viewBox="0 0 92 64" preserveAspectRatio="none" aria-hidden="true"></svg>
               <div class="code-text" id="code-text"></div>
             </div>
           </div>
@@ -255,7 +255,7 @@
 <script>
   /* ===== 在這裡改成你們的資料 ===== */
   const CONFIG = {
-    code: "HAPPY6",              // 訂位代號（顯示在條碼下方）
+    code: "HAPPY4EVER",           // 訂位代號（顯示在條碼下方）
     passenger: "WANG / XIAOMEI", // 旅客姓名
     companion: "CHEN / DAMING",  // 同行旅客姓名
     flight: "HA 520",
