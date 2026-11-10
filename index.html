@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>快樂航空｜查詢訂位</title>
+<meta name="color-scheme" content="light">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #16324F;        /* 海港深藍：文字 */
+    --ink-soft: #4E6A85;
+    --mist: #E6EFF3;       /* 霧藍底 */
+    --paper: #FFFFFF;
+    --coral: #E2566E;      /* 甘川珊瑚粉：重點色 */
+    --sun: #F3C04F;        /* 芥末黃 */
+    --teal: #2F9C95;
+    --line: #C9D7E0;
+    --display: "Bricolage Grotesque", "Noto Sans TC", sans-serif;
+    --body: "Noto Sans TC", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--mist);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.65;
+  }
+  a { color: inherit; }
+  :focus-visible { outline: 3px solid var(--coral); outline-offset: 3px; border-radius: 6px; }
+
+  .wrap { width: 100%; max-width: 560px; margin: 0 auto; padding: 0 16px; }
+
+  /* 頂部品牌 */
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    padding: 22px 0;
+    font-weight: 700; letter-spacing: .02em;
+  }
+  .brand svg { width: 34px; height: 34px; flex: none; }
+  .brand small { display: block; font-family: var(--display); font-weight: 600; font-size: 13px; color: var(--ink-soft); letter-spacing: 0; line-height: 1.2; }
+  .brand span { line-height: 1.2; }
+
+  /* 查詢表單 */
+  .lookup { padding: 40px 0 64px; }
+  .lookup h1 {
+    font-size: clamp(30px, 8vw, 40px);
+    line-height: 1.25; margin: 0 0 12px; font-weight: 700;
+  }
+  .lookup p { margin: 0 0 32px; color: var(--ink-soft); max-width: 34em; }
+  .field { display: block; margin-bottom: 20px; }
+  .field-label { display: block; font-weight: 500; margin-bottom: 8px; }
+  .field input {
+    width: 100%;
+    font: 600 28px/1 var(--display);
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--ink);
+    background: var(--paper);
+    border: 2px solid var(--line);
+    border-radius: 12px;
+    padding: 16px 18px;
+    transition: border-color .15s;
+  }
+  .field input::placeholder { letter-spacing: .04em; font-size: 20px; color: #9AAEBF; font-weight: 400; }
+  .field input:focus { outline: none; border-color: var(--ink); }
+  .field input[aria-invalid="true"], .field input[aria-invalid="true"]:focus { border-color: var(--coral); }
+  .hint { font-size: 14px; color: var(--ink-soft); margin-top: 8px; }
+  .error { font-size: 14px; color: #B8304A; margin-top: 4px; min-height: 1.5em; }
+  .error:empty { min-height: 0; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 100%;
+    font: 700 17px/1 var(--body);
+    color: var(--paper);
+    background: var(--ink);
+    border: 0; border-radius: 12px;
+    padding: 18px 20px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .btn:hover { background: #0F2540; }
+
+  /* 訂位結果 */
+  .booking { padding: 8px 0 56px; }
+  .booking[hidden], .lookup[hidden] { display: none; }
+  .status {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-weight: 500; font-size: 15px;
+    color: var(--teal);
+    margin-bottom: 4px;
+  }
+  .status svg { width: 18px; height: 18px; }
+
+  /* 航線主視覺：整頁最大膽的地方 */
+  .route { position: relative; margin: 8px 0 28px; }
+  .route-codes {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(64px, 22vw, 112px);
+    line-height: .9;
+    letter-spacing: -.03em;
+  }
+  .route-codes .to { color: var(--coral); }
+  .route-cities {
+    display: flex; justify-content: space-between;
+    font-size: 15px; color: var(--ink-soft); margin-top: 8px;
+  }
+  .route-cities span:last-child { text-align: right; }
+  .arc {
+    display: block; width: 100%; height: auto;
+    margin-bottom: 10px;
+    overflow: visible;
+  }
+  .arc path.track { fill: none; stroke: var(--ink); stroke-width: 2; stroke-dasharray: 2 9; stroke-linecap: round; opacity: .45; }
+  .arc .plane { fill: var(--ink); }
+
+  /* 登機證 */
+  .pass {
+    background: var(--paper);
+    border-radius: 18px;
+    box-shadow: 0 1px 0 var(--line), 0 18px 40px -24px rgba(22, 50, 79, .45);
+    overflow: hidden;
+  }
+  .pass-head {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--ink); color: var(--paper);
+    padding: 14px 20px;
+    font-size: 14px;
+  }
+  .pass-head strong { font-family: var(--display); font-size: 18px; font-weight: 600; letter-spacing: .04em; }
+  .pass-body { padding: 20px 20px 8px; }
+  .name { margin: 0 0 18px; }
+  .name dt, .grid dt { font-size: 13px; color: var(--ink-soft); }
+  .name dd { margin: 2px 0 0; font-size: 24px; font-weight: 700; line-height: 1.3; }
+  .grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 16px 12px; margin: 0;
+  }
+  .grid dd { margin: 2px 0 0; font-family: var(--display); font-weight: 600; font-size: 22px; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .grid dd.zh { font-family: var(--body); font-size: 17px; font-weight: 700; line-height: 1.35; }
+  .grid .wide { grid-column: span 3; }
+  .seat dd { color: var(--coral); }
+
+  /* 撕線 */
+  .tear {
+    position: relative; height: 28px; margin: 12px 0 0;
+  }
+  .tear::before {
+    content: ""; position: absolute; left: 22px; right: 22px; top: 50%;
+    border-top: 2px dashed var(--line);
+  }
+  .tear::after, .tear .notch {
+    content: ""; position: absolute; top: 50%; width: 28px; height: 28px; border-radius: 50%;
+    background: var(--mist); transform: translateY(-50%);
+  }
+  .tear::after { right: -14px; }
+  .tear .notch { left: -14px; }
+
+  .stub { padding: 8px 20px 22px; display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: end; }
+  .stub-msg { margin: 0; font-size: 16px; line-height: 1.75; }
+  .stub-msg .from { display: block; margin-top: 6px; font-size: 14px; color: var(--ink-soft); }
+  .barcode { width: 92px; height: 64px; display: block; }
+  .barcode rect { fill: var(--ink); }
+  .code-text { font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: .2em; text-align: center; margin-top: 4px; }
+
+  /* 同行旅客 */
+  .companion {
+    margin-top: 16px;
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    background: var(--paper);
+    border-radius: 14px;
+    padding: 16px 20px;
+  }
+  .companion .who { font-size: 13px; color: var(--ink-soft); }
+  .companion .who b { display: block; font-size: 18px; color: var(--ink); }
+  .companion .seat-mini { font-family: var(--display); font-weight: 600; font-size: 22px; }
+
+  .notes { margin-top: 28px; font-size: 15px; color: var(--ink-soft); }
+  .notes h2 { font-size: 17px; color: var(--ink); margin: 0 0 8px; }
+  .notes ul { margin: 0; padding-left: 1.2em; }
+  .notes li + li { margin-top: 4px; }
+
+  footer { padding: 24px 0 40px; font-size: 13px; color: var(--ink-soft); text-align: center; }
+
+  /* 揭曉：登機證浮現 */
+  .reveal .pass, .reveal .companion, .reveal .notes { animation: rise .6s cubic-bezier(.2,.7,.2,1) both; }
+  .reveal .pass { animation-delay: 1.5s; }
+  .reveal .companion { animation-delay: 1.7s; }
+  .reveal .notes { animation-delay: 1.9s; }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal .pass, .reveal .companion, .reveal .notes { animation: none; }
+  }
+  @media (max-width: 380px) {
+    .grid { grid-template-columns: repeat(2, 1fr); }
+    .grid .wide { grid-column: span 2; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="brand">
+      <svg viewBox="0 0 40 40" aria-hidden="true">
+        <circle cx="20" cy="20" r="19" fill="#E2566E"/>
+        <circle cx="20" cy="17" r="7" fill="#F3C04F"/>
+        <path d="M4 25c4-3 8-3 12 0s8 3 12 0 7-3 9-1v4a19 19 0 0 1-33 0z" fill="#16324F"/>
+      </svg>
+      <span>快樂航空<small>Happy Air</small></span>
+    </header>
+
+    <main>
+      <!-- 第一步：查詢 -->
+      <section class="lookup" id="lookup" aria-labelledby="lookup-title">
+        <h1 id="lookup-title">查詢你的訂位</h1>
+        <p>輸入訂位代號，就能看到你的機票和登機證。</p>
+        <form id="lookup-form" novalidate>
+          <label class="field">
+            <span class="field-label">訂位代號</span>
+            <input id="code" name="code" type="text" inputmode="latin" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8" aria-describedby="code-hint code-error" placeholder="例如 AB12CD">
+            <div class="hint" id="code-hint">代號在你收到的訊息裡，6 碼英文與數字。</div>
+            <div class="error" id="code-error" role="alert"></div>
+          </label>
+          <button class="btn" type="submit">查詢訂位</button>
+        </form>
+      </section>
+
+      <!-- 第二步：揭曉 -->
+      <section class="booking" id="booking" hidden aria-labelledby="booking-title">
+        <div class="status">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="currentColor"/><path d="M6 10.5l2.6 2.6L14 7.8" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span id="booking-title">已開票，旅程確認</span>
+        </div>
+
+        <div class="route" aria-label="從桃園國際機場飛往釜山金海國際機場">
+          <svg class="arc" viewBox="0 0 400 70" aria-hidden="true">
+            <path class="track" id="track" d="M40 56 Q200 -14 360 56"/>
+            <g id="plane" class="plane">
+              <path d="M-11 0 L4 -2.2 L9 -9 L11.5 -9 L9 -2 L13 -1.6 L15.5 -4.5 L17 -4.5 L16 0 L17 4.5 L15.5 4.5 L13 1.6 L9 2 L11.5 9 L9 9 L4 2.2 Z"/>
+            </g>
+          </svg>
+          <div class="route-codes"><span>TPE</span><span class="to">PUS</span></div>
+          <div class="route-cities"><span>台灣・桃園</span><span>韓國・釜山 金海</span></div>
+        </div>
+
+        <article class="pass" aria-label="登機證">
+          <div class="pass-head">
+            <span>登機證</span>
+            <strong id="flight-no"></strong>
+          </div>
+          <div class="pass-body">
+            <dl class="name">
+              <dt>旅客姓名</dt>
+              <dd id="passenger"></dd>
+            </dl>
+            <dl class="grid">
+              <div class="wide"><dt>出發日期</dt><dd class="zh" id="date"></dd></div>
+              <div><dt>登機時間</dt><dd class="zh" id="boarding"></dd></div>
+              <div><dt>登機門</dt><dd id="gate"></dd></div>
+              <div class="seat"><dt>座位</dt><dd id="seat"></dd></div>
+              <div><dt>艙等</dt><dd class="zh" id="cabin"></dd></div>
+              <div><dt>飛行時間</dt><dd class="zh">約 2 小時</dd></div>
+              <div><dt>行李</dt><dd class="zh">裝滿回憶</dd></div>
+            </dl>
+          </div>
+          <div class="tear" aria-hidden="true"><span class="notch"></span></div>
+          <div class="stub">
+            <p class="stub-msg"><span id="message"></span><span class="from" id="from"></span></p>
+            <div>
+              <svg class="barcode" id="barcode" viewBox="0 0 92 64" aria-hidden="true"></svg>
+              <div class="code-text" id="code-text"></div>
+            </div>
+          </div>
+        </article>
+
+        <div class="companion">
+          <div class="who">同行旅客<b id="companion"></b></div>
+          <div class="seat-mini" id="companion-seat"></div>
+        </div>
+
+        <section class="notes">
+          <h2>旅客須知</h2>
+          <ul id="notes"></ul>
+        </section>
+      </section>
+    </main>
+
+    <footer>快樂航空 Happy Air 是一間只為兩個人營運的航空公司。</footer>
+  </div>
+
+<script>
+  /* ===== 在這裡改成你們的資料 ===== */
+  const CONFIG = {
+    code: "HAPPY6",                 // 訂位代號（6 碼），告訴她這個
+    passenger: "我的寶貝",            // 她的名字
+    companion: "你的專屬旅伴",         // 你的名字
+    flight: "HA 520",
+    date: "等我們都有空的那一天",
+    boarding: "你說走就走",
+    gate: "A1",
+    seat: "5A",
+    companionSeat: "5B",
+    cabin: "雙人座艙",
+    message: "這張機票沒有期限。等我們都放假的時候，就一起去釜山看海吧。",
+    from: "— 愛你的我",
+    notes: [
+      "本機票全程有效，不可轉讓，只能和我一起使用。",
+      "請記得攜帶護照、好心情，以及想吃的清單。",
+      "抵達後的行程，由兩位旅客共同決定。"
+    ]
+  };
+  /* =============================== */
+
+  const $ = (id) => document.getElementById(id);
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function fill() {
+    $("flight-no").textContent = CONFIG.flight;
+    $("passenger").textContent = CONFIG.passenger;
+    $("date").textContent = CONFIG.date;
+    $("boarding").textContent = CONFIG.boarding;
+    $("gate").textContent = CONFIG.gate;
+    $("seat").textContent = CONFIG.seat;
+    $("cabin").textContent = CONFIG.cabin;
+    $("message").textContent = CONFIG.message;
+    $("from").textContent = CONFIG.from;
+    $("companion").textContent = CONFIG.companion;
+    $("companion-seat").textContent = CONFIG.companionSeat;
+    $("code-text").textContent = CONFIG.code;
+    $("notes").innerHTML = "";
+    CONFIG.notes.forEach((n) => { const li = document.createElement("li"); li.textContent = n; $("notes").appendChild(li); });
+    drawBarcode(CONFIG.code);
+  }
+
+  // 依訂位代號產生裝飾用條碼
+  function drawBarcode(text) {
+    const svg = $("barcode");
+    svg.innerHTML = "";
+    let seed = 0;
+    for (const c of text) seed = (seed * 31 + c.charCodeAt(0)) >>> 0;
+    let x = 0;
+    while (x < 92) {
+      seed = (seed * 1103515245 + 12345) >>> 0;
+      const w = 1 + (seed >>> 16) % 3;
+      const gap = 1 + (seed >>> 20) % 3;
+      if (x + w > 92) break;
+      const r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      r.setAttribute("x", x); r.setAttribute("y", 0);
+      r.setAttribute("width", w); r.setAttribute("height", 64);
+      svg.appendChild(r);
+      x += w + gap;
+    }
+  }
+
+  // 小飛機沿弧線飛行
+  function flyPlane() {
+    const track = $("track"), plane = $("plane");
+    const len = track.getTotalLength();
+    const place = (t) => {
+      const p = track.getPointAtLength(len * t);
+      const q = track.getPointAtLength(Math.min(len, len * t + 1));
+      const a = Math.atan2(q.y - p.y, q.x - p.x) * 180 / Math.PI;
+      plane.setAttribute("transform", `translate(${p.x} ${p.y}) rotate(${a})`);
+    };
+    if (reduceMotion) { place(1); return; }
+    const dur = 1600; let start;
+    const step = (ts) => {
+      if (!start) start = ts;
+      const k = Math.min(1, (ts - start) / dur);
+      const e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      place(e);
+      if (k < 1) requestAnimationFrame(step);
+    };
+    place(0);
+    requestAnimationFrame(step);
+  }
+
+  function reveal() {
+    fill();
+    $("lookup").hidden = true;
+    const b = $("booking");
+    b.hidden = false;
+    b.classList.add("reveal");
+    window.scrollTo(0, 0);
+    flyPlane();
+    $("booking-title").setAttribute("tabindex", "-1");
+    $("booking-title").focus({ preventScroll: true });
+  }
+
+  $("lookup-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const input = $("code");
+    const v = input.value.trim().toUpperCase();
+    if (!v) {
+      input.setAttribute("aria-invalid", "true");
+      $("code-error").textContent = "請輸入訂位代號。";
+      return;
+    }
+    if (v !== CONFIG.code.toUpperCase()) {
+      input.setAttribute("aria-invalid", "true");
+      $("code-error").textContent = "找不到這個訂位代號，請確認 6 碼英文與數字是否輸入正確。";
+      return;
+    }
+    input.removeAttribute("aria-invalid");
+    $("code-error").textContent = "";
+    reveal();
+  });
+
+  $("code").addEventListener("input", () => {
+    $("code").removeAttribute("aria-invalid");
+    $("code-error").textContent = "";
+  });
+
+  // 網址帶 ?code=XXXXXX 會自動填入
+  const q = new URLSearchParams(location.search).get("code");
+  if (q) $("code").value = q.toUpperCase();
+</script>
+</body>
+</html>
