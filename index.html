@@ -325,9 +325,12 @@
     const track = $("track"), plane = $("plane");
     const len = track.getTotalLength();
     const place = (t) => {
-      const p = track.getPointAtLength(len * t);
-      const q = track.getPointAtLength(Math.min(len, len * t + 1));
-      const a = Math.atan2(q.y - p.y, q.x - p.x) * 180 / Math.PI;
+      const d = len * t;
+      const p = track.getPointAtLength(d);
+      // 取前後兩點算切線角度，起點與終點也能正確轉向
+      const p0 = track.getPointAtLength(Math.max(0, d - 1));
+      const p1 = track.getPointAtLength(Math.min(len, d + 1));
+      const a = Math.atan2(p1.y - p0.y, p1.x - p0.x) * 180 / Math.PI;
       plane.setAttribute("transform", `translate(${p.x} ${p.y}) rotate(${a})`);
     };
     if (reduceMotion) { place(1); return; }
