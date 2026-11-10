@@ -194,13 +194,18 @@
   }
 
   /* ===== 背景主題：?theme=lofi / ?theme=pink ===== */
-  .sky { display: none; position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+  /* 背景固定在畫面上；高度用最大可視高度（lvh），Safari 工具列伸縮時不會跟著縮放而抖動 */
+  .sky {
+    display: none; position: fixed; top: 0; left: 0; z-index: 0;
+    width: 100%; height: 100vh; height: 100lvh;
+    pointer-events: none; overflow: hidden;
+  }
   .wrap { position: relative; z-index: 1; }
   [data-theme] .sky { display: block; }
 
   /* 普通版：事先算好的三層雲層圖，一打開就顯示；遠慢近快水平飄動，加輕微上下浮動 */
   .cloud-layer {
-    --tile: calc(150vh + 36px);          /* 一張雲層圖的寬度（高的 1.5 倍），左右可無縫循環 */
+    --tile: calc(150lvh + 36px);          /* 一張雲層圖的寬度（高的 1.5 倍），左右可無縫循環 */
     position: absolute; top: -12px; left: 0;
     height: calc(100% + 24px);
     width: calc(var(--tile) * 2);
@@ -212,6 +217,7 @@
       slide var(--dur) linear infinite,
       bob var(--bob) ease-in-out infinite alternate;
   }
+  @supports not (height: 1lvh) { .cloud-layer { --tile: calc(150vh + 36px); } }
   .cloud-layer.l1 { --dur: 250s; --bob: 24s; }
   .cloud-layer.l2 { --dur: 180s; --bob: 20s; }
   .cloud-layer.l3 { --dur: 126s; --bob: 16s; }
@@ -444,11 +450,11 @@
     // lofi：褪色藍天、灰白雲（維持原本色調）
     lofi: { skyTop: [.56, .70, .79], skyBottom: [.83, .88, .91],
             shadow: [0, 0, 0], mid: [.561, .561, .539], hi: [1.02, 1.02, .98],
-            dark: .5, light: .3, cover: .2, alpha: 8., skytint: .5, scale: 1.1, speed: .015, res: .5 },
+            dark: .5, light: .3, cover: .2, alpha: 8., skytint: .5, scale: 1.1, speed: .0095, res: .5 },
     // pink：依 Lover 色盤，寶寶藍天空 #76BAE0、粉嫩粉紅 #EBBED3、奶油黃 #FFF5CC 亮面、藕紫暗面
     pink: { skyTop: [.463, .729, .878], skyBottom: [.74, .87, .94],
             shadow: [.66, .44, .54], mid: [.95, .73, .80], hi: [1.0, .955, .80],
-            dark: .5, light: .32, cover: .2, alpha: 8., skytint: .08, scale: 1.1, speed: .015, res: .5 }
+            dark: .5, light: .32, cover: .2, alpha: 8., skytint: .08, scale: 1.1, speed: .0095, res: .5 }
   };
 
   const GL_FRAG = `
@@ -580,16 +586,22 @@
     const uRes = U("iResolution"), uTime = U("iTime");
 
     // 以較低解析度計算再放大：雲本來就柔和，手機也省電
+    // 尺寸取背景層（固定為最大可視高度），Safari 工具列伸縮不會觸發重設
+    let lastW = 0, lastH = 0;
     function resize() {
-      canvas.width = Math.max(1, Math.round(innerWidth * T.res));
-      canvas.height = Math.max(1, Math.round(innerHeight * T.res));
+      const w = sky.clientWidth || innerWidth, h = sky.clientHeight || innerHeight;
+      if (w === lastW && h === lastH) return false;
+      lastW = w; lastH = h;
+      canvas.width = Math.max(1, Math.round(w * T.res));
+      canvas.height = Math.max(1, Math.round(h * T.res));
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.uniform2f(uRes, canvas.width, canvas.height);
+      return true;
     }
     const t0 = performance.now() - 20000 - Math.random() * 60000; // 每次打開的雲都不一樣
     const draw = (now) => { gl.uniform1f(uTime, (now - t0) / 1000); gl.drawArrays(gl.TRIANGLES, 0, 3); };
     resize();
-    addEventListener("resize", () => { resize(); draw(performance.now()); });
+    addEventListener("resize", () => { if (resize()) draw(performance.now()); });
     sky.prepend(canvas);
     draw(performance.now());
     if (!reduceMotion) {
