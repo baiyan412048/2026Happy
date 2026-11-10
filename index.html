@@ -180,15 +180,31 @@
 
   footer { padding: 24px 0 40px; font-size: 13px; color: var(--ink-soft); text-align: center; }
 
-  /* 揭曉：登機證浮現 */
-  .reveal .pass, .reveal .companion, .reveal .notes { animation: rise .6s cubic-bezier(.2,.7,.2,1) both; }
-  .reveal .pass { animation-delay: 1.5s; }
-  .reveal .companion { animation-delay: 1.7s; }
-  .reveal .notes { animation-delay: 1.9s; }
-  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  /* ===== 進場動畫 =====
+     頁面一打開就同時開始，只有極短的先後順序，讓畫面由上往下展開；
+     背景的雲與 3D 飛機不在此列，會一直持續。 */
+  .brand, .status, .route-cities, .pass, .companion, .notes, footer {
+    animation: enter-rise 1.2s cubic-bezier(.16, .84, .3, 1) both;
+  }
+  .arc { animation: enter-fade 1.2s ease-out both; }
+  .route-codes span:first-child { display: inline-block; animation: enter-left 1.3s cubic-bezier(.16, .84, .3, 1) both; }
+  .route-codes .to { display: inline-block; animation: enter-right 1.3s cubic-bezier(.16, .84, .3, 1) both; }
+  .brand        { animation-delay: 0s; }
+  .status       { animation-delay: .06s; }
+  .arc          { animation-delay: .1s; }
+  .route-codes span { animation-delay: .1s; }
+  .route-cities { animation-delay: .18s; }
+  .pass         { animation-delay: .22s; }
+  .companion    { animation-delay: .3s; }
+  .notes        { animation-delay: .36s; }
+  footer        { animation-delay: .42s; }
+  @keyframes enter-rise  { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+  @keyframes enter-fade  { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes enter-left  { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+  @keyframes enter-right { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
 
   @media (prefers-reduced-motion: reduce) {
-    .reveal .pass, .reveal .companion, .reveal .notes { animation: none; }
+    .brand, .status, .arc, .route-codes span, .route-cities, .pass, .companion, .notes, footer { animation: none; }
   }
   @media (max-width: 440px) {
     .grid { grid-template-columns: repeat(2, 1fr); }
@@ -276,7 +292,7 @@
     </header>
 
     <main>
-      <section class="booking reveal" id="booking" aria-labelledby="booking-title">
+      <section class="booking" id="booking" aria-labelledby="booking-title">
         <div class="status">
           <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="currentColor"/><path d="M6 10.5l2.6 2.6L14 7.8" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span id="booking-title">訂位已確認，機票已開立</span>
@@ -421,7 +437,7 @@
       plane.setAttribute("transform", `translate(${p.x} ${p.y}) rotate(${a})`);
     };
     if (reduceMotion) { place(1); return; }
-    const dur = 1600; let start;
+    const dur = 2200; let start;
     const step = (ts) => {
       if (!start) start = ts;
       const k = Math.min(1, (ts - start) / dur);
