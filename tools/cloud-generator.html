@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>雲層圖產生器</title>
+<style>body{font-family:system-ui;margin:24px;background:#888}img{display:block;max-width:100%;margin:8px 0;background:#9bb}</style>
+</head>
+<body>
+<p>產生普通版背景使用的雲層圖（assets/clouds/*.webp）。打開此頁會在下方顯示結果，用 window.generateAll() 取得圖檔資料。</p>
+<div id="out"></div>
+<script>
+  function rng(seed) {
+    return function () {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed / 4294967296;
+    };
+  }
+
+  function cloudTexture(w, h, seed, opts) {
+    const r = rng(seed);
+    const P = 256, perm = new Uint8Array(P), val = new Float32Array(P);
+    for (let i = 0; i < P; i++) { perm[i] = i; val[i] = r(); }
+    for (let i = P - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [perm[i], perm[j]] = [perm[j], perm[i]]; }
+    const hash = (x, y) => val[perm[(perm[x & 255] + y) & 255]];
+    const smooth = (t) => t * t * (3 - 2 * t);
+    function noise(x, y, period) {
+      const x0 = Math.floor(x), y0 = Math.floor(y);
+      const fx = smooth(x - x0), fy = smooth(y - y0);
+      const xa = ((x0 % period) + period) % period, xb = (xa + 1) % period;
+      const a = hash(xa, y0), b = hash(xb, y0), c = hash(xa, y0 + 1), d = hash(xb, y0 + 1);
+      return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy;
+    }
+    function fbm(x, y) {
+      let sum = 0, amp = .6, period = opts.cells, f = 1;
+      const persist = opts.persist || .44, oct = opts.octaves || 6;
+      for (let o = 0; o < oct; o++) {
+        sum += amp * noise(x * f, y * f, period);
+        amp *= persist; f *= 2; period *= 2;
+      }
+      return sum;
+    }
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    const ctx = c.getContext("2d");
+    const img = ctx.createImageData(w, h);
+    const sx = opts.cells / w, sy = opts.cells / w;
+    const { hi, mid, lo, warm } = opts.palette;
+    const shadeOff = Math.max(2, h * .012);
+    for (let y = 0; y < h; y++) {
+      const v = y / h;
+      const band = opts.band(v);
+      for (let x = 0; x < w; x++) {
+        const d = fbm(x * sx, y * sy) * band;
+        let a = (d - opts.lo) / (opts.hi - opts.lo);
+        a = a <= 0 ? 0 : a >= 1 ? 1 : a * a * (3 - 2 * a);
+        const i = (y * w + x) * 4;
+        if (a === 0) { img.data[i + 3] = 0; continue; }
+        // 光從上方來：上方較密的地方，下方就比較暗
+        const above = fbm(x * sx, (y - shadeOff) * sy) * opts.band(Math.max(0, (y - shadeOff) / h));
+        let light = .58 + (d - above) * (opts.shade || 9) + (a - .5) * .35;
+        light = light < 0 ? 0 : light > 1 ? 1 : light;
+        let col;
+        if (light > .5) { const t = (light - .5) * 2; col = mid.map((m, k) => m + (hi[k] - m) * t); }
+        else { const t = light * 2; col = lo.map((l, k) => l + (mid[k] - l) * t); }
+        const wt = (1 - v) * .35;
+        col = col.map((cc, k) => cc + (warm[k] - cc) * wt);
+        img.data[i] = col[0]; img.data[i + 1] = col[1]; img.data[i + 2] = col[2];
+        img.data[i + 3] = a * opts.alpha * 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    return c.toDataURL("image/webp", .9);
+  }
+
+
+  // 一張雲層圖的「設計尺寸」：寬 = 高 × 1.5，左右可無縫循環
+  const TILE_W = 2400, TILE_H = 1600;
+
+  const bandFar = (v) => .88 + .22 * Math.pow(1 - v, 1.5) + .12 * Math.pow(v, 2);
+  const bandMid = (v) => .82 + .3 * Math.pow(1 - v, 2.2) + .22 * Math.pow(v, 3);
+  const bandNear = (v) => .9 + .12 * Math.sin(v * Math.PI * 2);
+
+  const LOFI = { hi: [246, 244, 238], mid: [221, 228, 231], lo: [156, 177, 194], warm: [238, 226, 212] };
+
+  const THEMES = {
+    // lofi：維持原本的效果
+    lofi: {
+      scale: .4,
+      layers: [
+        { seed: 1989, cells: 3, lo: .43, hi: .60, alpha: .72, band: bandFar, palette: LOFI },
+        { seed: 1313, cells: 5, lo: .47, hi: .60, alpha: .90, band: bandMid, palette: LOFI },
+        { seed: 27,   cells: 7, lo: .56, hi: .70, alpha: .50, band: bandNear, palette: LOFI }
+      ]
+    },
+    // pink：遠層偏淡、偏紫灰、對比低（空氣透視），越近越飽和、高光越亮、陰影越深
+    // pink：雲形參數與 lofi 相同；遠層淡、偏紫灰，近層較飽和、明暗較清楚，做出層次
+    pink: {
+      scale: .4,
+      layers: [
+        { seed: 1989, cells: 3, lo: .43, hi: .60, alpha: .72, band: bandFar,
+          palette: { hi: [250, 241, 246], mid: [234, 214, 227], lo: [198, 178, 199], warm: [246, 228, 228] } },
+        { seed: 1313, cells: 5, lo: .47, hi: .60, alpha: .92, band: bandMid,
+          palette: { hi: [254, 238, 244], mid: [242, 194, 213], lo: [194, 132, 164], warm: [252, 214, 204] } },
+        { seed: 27,   cells: 7, lo: .56, hi: .70, alpha: .60, band: bandNear,
+          palette: { hi: [255, 246, 249], mid: [247, 182, 206], lo: [186, 112, 150], warm: [253, 210, 200] } }
+      ]
+    }
+  };
+
+  function generate(name) {
+    const T = THEMES[name];
+    const w = Math.round(TILE_W * T.scale), h = Math.round(TILE_H * T.scale);
+    return T.layers.map((L) => cloudTexture(w, h, L.seed, L));
+  }
+
+  window.generateAll = () => ({ lofi: generate("lofi"), pink: generate("pink") });
+
+  const out = document.getElementById("out");
+  const all = window.generateAll();
+  Object.entries(all).forEach(([name, urls]) => urls.forEach((u, i) => {
+    const img = new Image(); img.src = u; img.title = `${name}-${i + 1}`; out.appendChild(img);
+  }));
+</script>
+</body>
+</html>

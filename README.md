@@ -25,7 +25,12 @@ https://baiyan412048.github.io/2026Happy/
 | Lofi 寫實雲層（WebGL，雲會變化） | https://baiyan412048.github.io/2026Happy/?theme=lofi&webgl |
 | 粉色寫實雲層（WebGL，雲會變化） | https://baiyan412048.github.io/2026Happy/?theme=pink&webgl |
 
-WebGL 版由 GPU 即時計算雲層，形狀會隨時間慢慢變化；裝置不支援 WebGL 時自動改用一般版本。
+- 普通版：使用事先產生好的雲層圖（`assets/clouds/`），一打開就顯示，三層以不同速度飄動。圖檔由 `tools/cloud-generator.html` 產生，要調整雲朵可改那個檔案的參數後重新產生。
+- WebGL 版：由 GPU 即時計算，雲的形狀會隨時間慢慢變化；裝置不支援 WebGL 時自動改用普通版。
+
+## 第三方資源
+
+WebGL 版的雲朵著色器移植自 drift 的〈2D Clouds〉（https://www.shadertoy.com/view/4tdSWr），以 CC BY-NC-SA 3.0 授權；該段著色器沿用相同授權，僅供非商業使用。
 
 ## 備份
 
