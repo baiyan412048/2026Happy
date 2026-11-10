@@ -15,10 +15,10 @@ const CFG = {
 };
 
 // 鏡頭在原點看向天空（仰角自動調整，見 aimCamera）。
-// 航線：從畫面左側約 22% 高度進場，往右上爬升、往遠處飛去，到右側約 18% 高度出場
-// （以直式手機計算；寬螢幕會自動把航線延長到畫面外）。
+// 航線：從左邊遠處進場（畫面左側約 36% 高度），往右邊近處飛來並爬升約 9°，
+// 在右上方出場；飛機會越飛越大（以直式手機計算，寬螢幕會自動把航線延長到畫面外）。
 const CAMERA = { fov: 34 };
-const PATH = { a: [-74, 95, -219], b: [122, 172, -360] };
+const PATH = { a: [-128, 111, -388], b: [83, 154, -241] };
 
 export function start(sky, theme) {
   const canvas = document.createElement("canvas");
@@ -51,26 +51,32 @@ export function start(sky, theme) {
   function fitPath() {
     camera.updateMatrixWorld();
     const L = A.distanceTo(B);
-    const xAt = (k) => tmp.copy(A).addScaledVector(dir, k * L).project(camera).x;  // -1 左緣、+1 右緣
+    // 投影到畫面：x、y 都在 -1～+1 之間代表在畫面內；超出 1.35 視為完全離開畫面
+    const inside = (k) => {
+      const v = tmp.copy(A).addScaledVector(dir, k * L).project(camera);
+      return Math.abs(v.x) < 1.35 && Math.abs(v.y) < 1.35;
+    };
     let k0 = 0, k1 = 1;
-    while (xAt(k0) > -1.35 && k0 > -4) k0 -= .02;
-    while (xAt(k1) < 1.35 && k1 < 5) k1 += .02;
+    while (inside(k0) && k0 > -4) k0 -= .02;
+    while (inside(k1) && k1 < 5) k1 += .02;
     from.copy(A).addScaledVector(dir, k0 * L);
     to.copy(A).addScaledVector(dir, k1 * L);
     // 寬螢幕航線較長：飛行時間限制在 8～11 秒
     flight = THREE.MathUtils.clamp(from.distanceTo(to) / CFG.speed, 8, 11);
   }
 
-  // 調整鏡頭仰角，讓航線中段落在畫面上方約 20% 高度（直式、橫式螢幕都一樣）
+  // 調整鏡頭仰角：直式螢幕讓航線中段在畫面上方約 20% 高度；
+  // 寬螢幕水平視野較廣，中段放低到約 35%，飛機才會橫越大半個畫面再爬出去
   const mid = A.clone().add(B).multiplyScalar(.5);
   function aimCamera() {
+    const target = camera.aspect < .8 ? .6 : .3;    // 畫面座標：+1 頂端、-1 底部
     let lo = -20, hi = 45;
     for (let i = 0; i < 30; i++) {
       const deg = (lo + hi) / 2, r = THREE.MathUtils.degToRad(deg);
       camera.lookAt(0, Math.sin(r), -Math.cos(r));
       camera.updateMatrixWorld();
       const y = tmp.copy(mid).project(camera).y;   // +1 頂端、-1 底部
-      if (y > .6) lo = deg; else hi = deg;          // 太高就把鏡頭往上抬
+      if (y > target) lo = deg; else hi = deg;      // 太高就把鏡頭往上抬
     }
   }
 
